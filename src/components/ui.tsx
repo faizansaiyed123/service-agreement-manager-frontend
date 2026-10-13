@@ -1,12 +1,12 @@
-import type { ButtonHTMLAttributes, FormEvent, ReactNode } from "react";
+import type { ButtonHTMLAttributes, FormEvent, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { useState } from "react";
 
 export function Button({ className="", children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return <button className={`btn ${className}`} {...props}>{children}</button>;
 }
-export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) { const {className="",...rest}=props; return <input className={`input ${className}`} {...rest}/>; }
-export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) { const {className="",...rest}=props; return <textarea className={`input textarea ${className}`} {...rest}/>; }
-export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) { const {className="",...rest}=props; return <select className={`input ${className}`} {...rest}/>; }
+export function Input(props: InputHTMLAttributes<HTMLInputElement>) { const {className="",...rest}=props; return <input className={`input ${className}`} {...rest}/>; }
+export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) { const {className="",...rest}=props; return <textarea className={`input textarea ${className}`} {...rest}/>; }
+export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) { const {className="",...rest}=props; return <select className={`input ${className}`} {...rest}/>; }
 export function Card({children,className=""}:{children:ReactNode;className?:string}){return <section className={`card ${className}`}>{children}</section>;}
 export function Badge({children,tone="neutral"}:{children:ReactNode;tone?:"neutral"|"success"|"warning"|"danger"|"info"}){return <span className={`badge badge-${tone}`}>{children}</span>;}
 export function Spinner(){return <span className="spinner" aria-label="Loading"/>;}
