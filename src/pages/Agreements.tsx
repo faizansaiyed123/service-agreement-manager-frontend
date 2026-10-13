@@ -67,7 +67,7 @@ function AgreementCreateModal({ customers, onClose, onCreated }: { customers: Cu
 
 function AgreementDetail({ agreement, onClose, onUpdated }: { agreement: Agreement; onClose: () => void; onUpdated: (agreement: Agreement) => void }) {
   const [versions, setVersions] = useState<unknown[]>([]); const [events, setEvents] = useState<unknown[]>([]); const [renewals, setRenewals] = useState<RenewalOffer[]>([]);
-  const [tab, setTab] = useState<"summary" | "history" | "renewals">("summary"); const [actionOpen, setActionOpen] = useState<"accept" | "reason" | null>(null); const [renewalOpen, setRenewalOpen] = useState(false); const [error, setError] = useState("");
+  const [tab, setTab] = useState<"summary" | "history" | "renewals">("summary"); const [actionOpen, setActionOpen] = useState<"accept" | "suspend" | "cancel" | null>(null); const [renewalOpen, setRenewalOpen] = useState(false); const [error, setError] = useState("");
   useEffect(() => { Promise.all([endpoints.agreements.versions(agreement.id), endpoints.agreements.events(agreement.id), endpoints.agreements.renewals(agreement.id)]).then(([versionData, eventData, renewalData]) => { setVersions(versionData); setEvents(eventData); setRenewals(renewalData); }).catch(cause => setError(cause instanceof Error ? cause.message : "Unable to load agreement history")); }, [agreement.id]);
   async function run(action: string, body?: unknown) {
     setError("");
@@ -85,11 +85,11 @@ function AgreementDetail({ agreement, onClose, onUpdated }: { agreement: Agreeme
       {agreement.status==="draft"&&<Button onClick={()=>void run("propose")}>Propose</Button>}
       {agreement.status==="proposed"&&<Button onClick={()=>setActionOpen("accept")}>Record acceptance</Button>}
       {agreement.status==="accepted"&&<Button onClick={()=>void run("activate")}>Activate</Button>}
-      {agreement.status==="active"&&<><Button className="btn-secondary" onClick={()=>setActionOpen("reason")}>Suspend</Button><Button className="btn-danger" onClick={()=>setActionOpen("reason")}>Cancel</Button></>}
-      {agreement.status==="suspended"&&<><Button onClick={()=>void run("resume")}>Resume</Button><Button className="btn-danger" onClick={()=>setActionOpen("reason")}>Cancel</Button></>}
-      {["draft","proposed","accepted"].includes(agreement.status)&&<Button className="btn-danger" onClick={()=>setActionOpen("reason")}>Cancel</Button>}
+      {agreement.status==="active"&&<><Button className="btn-secondary" onClick={()=>setActionOpen("suspend")}>Suspend</Button><Button className="btn-danger" onClick={()=>setActionOpen("cancel")}>Cancel</Button></>}
+      {agreement.status==="suspended"&&<><Button onClick={()=>void run("resume")}>Resume</Button><Button className="btn-danger" onClick={()=>setActionOpen("cancel")}>Cancel</Button></>}
+      {["draft","proposed","accepted"].includes(agreement.status)&&<Button className="btn-danger" onClick={()=>setActionOpen("cancel")}>Cancel</Button>}
     </div>
-    {actionOpen==="accept"&&<AcceptanceModal onClose={()=>setActionOpen(null)} onSubmit={body=>void run("accept",body)} />}{actionOpen==="reason"&&<ReasonModal onClose={()=>setActionOpen(null)} onSubmit={reason=>{const action=agreement.status==="active"?"suspend":"cancel";void run(action,{reason})}} />}{renewalOpen&&<RenewalModal agreement={agreement} onClose={()=>setRenewalOpen(false)} onCreated={offer=>{setRenewals(current=>[offer,...current]);setRenewalOpen(false);}}/>}
+    {actionOpen==="accept"&&<AcceptanceModal onClose={()=>setActionOpen(null)} onSubmit={body=>void run("accept",body)} />}{(actionOpen==="suspend"||actionOpen==="cancel")&&<ReasonModal onClose={()=>setActionOpen(null)} onSubmit={reason=>{void run(actionOpen,{reason})}} />}{renewalOpen&&<RenewalModal agreement={agreement} onClose={()=>setRenewalOpen(false)} onCreated={offer=>{setRenewals(current=>[offer,...current]);setRenewalOpen(false);}}/>}
   </Modal>;
 }
 
