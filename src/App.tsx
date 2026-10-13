@@ -12,6 +12,7 @@ import { InvoicesPage } from "./pages/Invoices";
 import { CatalogPage, EquipmentPage } from "./pages/Assets";
 import { SettingsPage } from "./pages/Settings";
 import { ReportsPage } from "./pages/Reports";
+import { ForgotPasswordPage, ResetPasswordPage } from "./pages/PasswordRecovery";
 
 function Protected({children}:{children:ReactNode}){
   const location=useLocation();
@@ -19,7 +20,7 @@ function Protected({children}:{children:ReactNode}){
 }
 export default function App(){
   return <Routes>
-    <Route path="/login" element={<AuthPage mode="login"/>}/><Route path="/register" element={<AuthPage mode="register"/>}/>
+    <Route path="/login" element={<AuthPage mode="login"/>}/><Route path="/register" element={<AuthPage mode="register"/>}/><Route path="/forgot-password" element={<ForgotPasswordPage/>}/><Route path="/reset-password" element={<ResetPasswordPage/>}/>
     <Route element={<Protected><AppShell/></Protected>}>
       <Route index element={<OverviewPage/>}/>
       <Route path="customers" element={<CustomersPage/>}/>
