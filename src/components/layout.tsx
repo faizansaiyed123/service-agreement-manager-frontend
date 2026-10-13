@@ -13,6 +13,7 @@ const nav = [
   {to:"/assets",label:"Equipment",icon:"◫"},
   {to:"/catalog",label:"Service catalog",icon:"◆"},
   {to:"/reports",label:"Reports",icon:"▥"},
+  {to:"/integrations",label:"Integrations",icon:"↯"},
   {to:"/settings",label:"Settings",icon:"⚙"},
 ];
 export function AppShell(){
