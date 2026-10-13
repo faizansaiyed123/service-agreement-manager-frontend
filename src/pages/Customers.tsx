@@ -66,22 +66,140 @@ function CustomerDrawer({ customer, onClose, onChanged }: { customer: Customer; 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [locations, setLocations] = useState<ServiceLocation[]>([]);
   const [tab, setTab] = useState<"summary" | "contacts" | "locations">("summary");
+  const [contactOpen, setContactOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
   const [error, setError] = useState("");
-  useEffect(() => { Promise.all([endpoints.customers.contacts(customer.id), endpoints.customers.locations(customer.id)]).then(([contactsData, locationsData]) => { setContacts(contactsData); setLocations(locationsData); }).catch(cause => setError(cause instanceof Error ? cause.message : "Unable to load customer details")); }, [customer.id]);
+
+  async function loadDetails() {
+    try {
+      const [contactsData, locationsData] = await Promise.all([
+        endpoints.customers.contacts(customer.id),
+        endpoints.customers.locations(customer.id),
+      ]);
+      setContacts(contactsData);
+      setLocations(locationsData);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to load customer details");
+    }
+  }
+
+  useEffect(() => { void loadDetails(); }, [customer.id]);
+
   async function deactivate() {
     if (!window.confirm("Deactivate this customer?")) return;
-    try { await endpoints.customers.deactivate(customer.id); onChanged({ ...customer, status: "inactive" }); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to deactivate customer"); }
+    try {
+      await endpoints.customers.deactivate(customer.id);
+      onChanged({ ...customer, status: "inactive" });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to deactivate customer");
+    }
   }
+
   return <Modal title={customer.name} onClose={onClose}>
-    <div className="drawer-meta"><span>{customer.customer_number}</span><Badge tone={customer.status === "active" ? "success" : "neutral"}>{customer.status}</Badge></div>
+    <div className="drawer-meta">
+      <span>{customer.customer_number}</span>
+      <Badge tone={customer.status === "active" ? "success" : "neutral"}>{customer.status}</Badge>
+    </div>
     {error && <div className="error-banner">{error}</div>}
-    <div className="tabs"><button className={tab === "summary" ? "tab active" : "tab"} onClick={() => setTab("summary")}>Summary</button><button className={tab === "contacts" ? "tab active" : "tab"} onClick={() => setTab("contacts")}>Contacts ({contacts.length})</button><button className={tab === "locations" ? "tab active" : "tab"} onClick={() => setTab("locations")}>Locations ({locations.length})</button></div>
-    {tab === "summary" && <div className="detail-grid"><div><span className="eyebrow">Email</span><strong>{customer.email || "Not set"}</strong></div><div><span className="eyebrow">Phone</span><strong>{customer.phone || "Not set"}</strong></div><div className="detail-wide"><span className="eyebrow">Notes</span><p className="muted">{customer.notes || "No notes yet."}</p></div></div>}
-    {tab === "contacts" && <div className="list">{contacts.length ? contacts.map(contact => <div className="list-row" key={contact.id}><div><strong>{contact.full_name}</strong><span>{contact.email || contact.phone || "No contact detail"}</span></div>{contact.is_billing_contact && <Badge tone="info">Billing</Badge>}</div>) : <EmptyState title="No contacts" description="No contacts are configured for this customer yet." />}</div>}
-    {tab === "locations" && <div className="list">{locations.length ? locations.map(location => <div className="list-row" key={location.id}><div><strong>{location.name}</strong><span>{location.address_line1}, {location.city}{location.region ? ", " + location.region : ""}</span></div><Badge tone={location.is_active ? "success" : "neutral"}>{location.is_active ? "Active" : "Inactive"}</Badge></div>) : <EmptyState title="No service locations" description="Create a location before scheduling field work." />}</div>}
-    <Attachments entityType="customer" entityId={customer.id}/><div className="modal-actions">{customer.status === "active" && <Button className="btn-danger" onClick={() => void deactivate()}>Deactivate customer</Button>}</div>
+    <div className="tabs">
+      <button className={tab === "summary" ? "tab active" : "tab"} onClick={() => setTab("summary")}>Summary</button>
+      <button className={tab === "contacts" ? "tab active" : "tab"} onClick={() => setTab("contacts")}>Contacts ({contacts.length})</button>
+      <button className={tab === "locations" ? "tab active" : "tab"} onClick={() => setTab("locations")}>Locations ({locations.length})</button>
+    </div>
+
+    {tab === "summary" && <div className="detail-grid">
+      <div><span className="eyebrow">Email</span><strong>{customer.email || "Not set"}</strong></div>
+      <div><span className="eyebrow">Phone</span><strong>{customer.phone || "Not set"}</strong></div>
+      <div className="detail-wide"><span className="eyebrow">Notes</span><p className="muted">{customer.notes || "No notes yet."}</p></div>
+    </div>}
+
+    {tab === "contacts" && <div>
+      <div className="section-action-row"><span className="muted">People connected to this account.</span><Button className="btn-secondary" onClick={() => setContactOpen(true)}>Add contact</Button></div>
+      <div className="list">{contacts.length ? contacts.map(contact => <div className="list-row" key={contact.id}>
+        <div><strong>{contact.full_name}</strong><span>{contact.email || contact.phone || "No contact detail"}</span></div>
+        {contact.is_billing_contact && <Badge tone="info">Billing</Badge>}
+      </div>) : <EmptyState title="No contacts" description="Add a billing or service contact for this customer." />}</div>
+    </div>}
+
+    {tab === "locations" && <div>
+      <div className="section-action-row"><span className="muted">Places where work is performed.</span><Button className="btn-secondary" onClick={() => setLocationOpen(true)}>Add location</Button></div>
+      <div className="list">{locations.length ? locations.map(location => <div className="list-row" key={location.id}>
+        <div><strong>{location.name}</strong><span>{location.address_line1}, {location.city}{location.region ? ", " + location.region : ""}</span></div>
+        <Badge tone={location.is_active ? "success" : "neutral"}>{location.is_active ? "Active" : "Inactive"}</Badge>
+      </div>) : <EmptyState title="No service locations" description="Create a location before scheduling field work." />}</div>
+    </div>}
+
+    <Attachments entityType="customer" entityId={customer.id} />
+    <div className="modal-actions">{customer.status === "active" && <Button className="btn-danger" onClick={() => void deactivate()}>Deactivate customer</Button>}</div>
+
+    {contactOpen && <ContactModal customerId={customer.id} onClose={() => setContactOpen(false)} onCreated={contact => { setContacts(current => [...current, contact]); setContactOpen(false); }} />}
+    {locationOpen && <LocationModal customerId={customer.id} onClose={() => setLocationOpen(false)} onCreated={location => { setLocations(current => [...current, location]); setLocationOpen(false); }} />}
   </Modal>;
+}
+
+function ContactModal({ customerId, onClose, onCreated }: { customerId: string; onClose: () => void; onCreated: (contact: Contact) => void }) {
+  const [form, setForm] = useState({ fullName: "", email: "", phone: "", billing: false });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent) {
+    event.preventDefault(); setBusy(true); setError("");
+    try {
+      const contact = await endpoints.customers.addContact(customerId, {
+        full_name: form.fullName,
+        email: form.email || null,
+        phone: form.phone || null,
+        is_billing_contact: form.billing,
+      });
+      onCreated(contact);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to add contact");
+    } finally { setBusy(false); }
+  }
+
+  return <Modal title="Add contact" onClose={onClose}><form className="form-grid" onSubmit={submit}>
+    <label>Full name<Input value={form.fullName} onChange={event => setForm({ ...form, fullName: event.target.value })} required /></label>
+    <div className="form-two"><label>Email<Input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></label><label>Phone<Input value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} /></label></div>
+    <label className="checkbox-label"><input type="checkbox" checked={form.billing} onChange={event => setForm({ ...form, billing: event.target.checked })} /> Billing contact</label>
+    {error && <div className="error-banner">{error}</div>}
+    <Button disabled={busy}>{busy ? "Adding…" : "Add contact"}</Button>
+  </form></Modal>;
+}
+
+function LocationModal({ customerId, onClose, onCreated }: { customerId: string; onClose: () => void; onCreated: (location: ServiceLocation) => void }) {
+  const [form, setForm] = useState({ name: "", address1: "", address2: "", city: "", region: "", postalCode: "", country: "US", access: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent) {
+    event.preventDefault(); setBusy(true); setError("");
+    try {
+      const location = await endpoints.customers.addLocation(customerId, {
+        name: form.name,
+        address_line1: form.address1,
+        address_line2: form.address2 || null,
+        city: form.city,
+        region: form.region || null,
+        postal_code: form.postalCode || null,
+        country_code: form.country.toUpperCase(),
+        access_instructions: form.access || null,
+      });
+      onCreated(location);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to add service location");
+    } finally { setBusy(false); }
+  }
+
+  return <Modal title="Add service location" onClose={onClose}><form className="form-grid" onSubmit={submit}>
+    <label>Location name<Input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} required /></label>
+    <label>Address line 1<Input value={form.address1} onChange={event => setForm({ ...form, address1: event.target.value })} required /></label>
+    <label>Address line 2<Input value={form.address2} onChange={event => setForm({ ...form, address2: event.target.value })} /></label>
+    <div className="form-two"><label>City<Input value={form.city} onChange={event => setForm({ ...form, city: event.target.value })} required /></label><label>Region/state<Input value={form.region} onChange={event => setForm({ ...form, region: event.target.value })} /></label></div>
+    <div className="form-two"><label>Postal code<Input value={form.postalCode} onChange={event => setForm({ ...form, postalCode: event.target.value })} /></label><label>Country code<Input maxLength={2} value={form.country} onChange={event => setForm({ ...form, country: event.target.value })} required /></label></div>
+    <label>Access instructions<Input value={form.access} onChange={event => setForm({ ...form, access: event.target.value })} /></label>
+    {error && <div className="error-banner">{error}</div>}
+    <Button disabled={busy}>{busy ? "Creating…" : "Create location"}</Button>
+  </form></Modal>;
 }
 
 function parseCsv(text: string): Array<Record<string, string>> {
