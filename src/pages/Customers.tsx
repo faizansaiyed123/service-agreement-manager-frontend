@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { endpoints } from "../lib/api";
 import type { Contact, Customer, ServiceLocation } from "../types";
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, TextArea } from "../components/ui";
+import { Attachments } from "../components/Attachments";
 
 export function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -76,6 +77,6 @@ function CustomerDrawer({ customer, onClose, onChanged }: { customer: Customer; 
     {tab === "summary" && <div className="detail-grid"><div><span className="eyebrow">Email</span><strong>{customer.email || "Not set"}</strong></div><div><span className="eyebrow">Phone</span><strong>{customer.phone || "Not set"}</strong></div><div className="detail-wide"><span className="eyebrow">Notes</span><p className="muted">{customer.notes || "No notes yet."}</p></div></div>}
     {tab === "contacts" && <div className="list">{contacts.length ? contacts.map(contact => <div className="list-row" key={contact.id}><div><strong>{contact.full_name}</strong><span>{contact.email || contact.phone || "No contact detail"}</span></div>{contact.is_billing_contact && <Badge tone="info">Billing</Badge>}</div>) : <EmptyState title="No contacts" description="No contacts are configured for this customer yet." />}</div>}
     {tab === "locations" && <div className="list">{locations.length ? locations.map(location => <div className="list-row" key={location.id}><div><strong>{location.name}</strong><span>{location.address_line1}, {location.city}{location.region ? ", " + location.region : ""}</span></div><Badge tone={location.is_active ? "success" : "neutral"}>{location.is_active ? "Active" : "Inactive"}</Badge></div>) : <EmptyState title="No service locations" description="Create a location before scheduling field work." />}</div>}
-    <div className="modal-actions">{customer.status === "active" && <Button className="btn-danger" onClick={() => void deactivate()}>Deactivate customer</Button>}</div>
+    <Attachments entityType="customer" entityId={customer.id}/><div className="modal-actions">{customer.status === "active" && <Button className="btn-danger" onClick={() => void deactivate()}>Deactivate customer</Button>}</div>
   </Modal>;
 }
