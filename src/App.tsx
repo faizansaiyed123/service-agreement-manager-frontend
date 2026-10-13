@@ -10,6 +10,7 @@ import { AgreementsPage } from "./pages/Agreements";
 import { OperationsPage } from "./pages/Operations";
 import { InvoicesPage } from "./pages/Invoices";
 import { CatalogPage, EquipmentPage } from "./pages/Assets";
+import { SettingsPage } from "./pages/Settings";
 
 function Protected({children}:{children:ReactNode}){
   const location=useLocation();
@@ -26,7 +27,7 @@ export default function App(){
       <Route path="invoices" element={<InvoicesPage/>}/>
       <Route path="assets" element={<EquipmentPage/>}/>
       <Route path="catalog" element={<CatalogPage/>}/>
-      <Route path="settings" element={<PlaceholderPage title="Settings" eyebrow="Administration"/>}/>
+      <Route path="settings" element={<SettingsPage/>}/>
     </Route>
     <Route path="*" element={<Navigate to="/" replace/>}/>
   </Routes>;
