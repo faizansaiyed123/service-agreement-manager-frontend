@@ -12,6 +12,7 @@ const nav = [
   {to:"/invoices",label:"Invoices",icon:"▤"},
   {to:"/assets",label:"Equipment",icon:"◫"},
   {to:"/catalog",label:"Service catalog",icon:"◆"},
+  {to:"/reports",label:"Reports",icon:"▥"},
   {to:"/settings",label:"Settings",icon:"⚙"},
 ];
 export function AppShell(){
