@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { endpoints, apiBlob } from "../lib/api";
+import { endpoints } from "../lib/api";
 import { Button, EmptyState, Input } from "./ui";
 
 export type AttachmentEntity = "customer" | "service_location" | "equipment" | "agreement" | "work_order" | "invoice";
