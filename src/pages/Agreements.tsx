@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { endpoints } from "../lib/api";
 import type { Agreement, Customer, RenewalOffer, ServiceLocation } from "../types";
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, TextArea } from "../components/ui";
+import { Attachments } from "../components/Attachments";
 
 const money = (value: string, currency: string) => new Intl.NumberFormat(undefined, { style: "currency", currency }).format(Number(value));
 const tone = (status: Agreement["status"]) => status === "active" ? "success" : status === "suspended" || status === "proposed" ? "warning" : status === "cancelled" || status === "expired" ? "danger" : "info";
@@ -29,7 +30,7 @@ export function AgreementsPage() {
 
   return <div>
     <PageHeader eyebrow="Contracts" title="Agreements" description="Build, propose, accept and manage service agreements while preserving immutable pricing history." actions={<Button onClick={() => setCreateOpen(true)}>New agreement</Button>} />
-    {error && <div className="error-banner page-error">{error}</div>}
+    {error && <div className="error-banner page-error">{error}<Attachments entityType="agreement" entityId={agreement.id}/></div>}
     <Card>
       {loading ? <div className="center-load"><Spinner /></div> : agreements.length ? <div className="table-wrap"><table><thead><tr><th>Agreement</th><th>Customer</th><th>Term</th><th>Total</th><th>Status</th><th /></tr></thead><tbody>
         {agreements.map(item => <tr key={item.id}><td><button className="table-link" onClick={() => setSelected(item)}><strong>{item.agreement_number}</strong><span>{item.title}</span></button></td><td>{customers.find(customer => customer.id === item.customer_id)?.name || "Customer"}</td><td>{item.start_date} → {item.end_date}</td><td>{money(item.total_amount, item.currency)}</td><td><Badge tone={tone(item.status)}>{item.status}</Badge></td><td><button className="text-button" onClick={() => setSelected(item)}>Open</button></td></tr>)}
