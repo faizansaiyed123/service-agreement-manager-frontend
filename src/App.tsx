@@ -4,7 +4,6 @@ import { AppShell } from "./components/layout";
 import { readSession } from "./lib/storage";
 import { AuthPage } from "./pages/Auth";
 import { OverviewPage } from "./pages/Overview";
-import { PlaceholderPage } from "./pages/Placeholder";
 import { CustomersPage } from "./pages/Customers";
 import { AgreementsPage } from "./pages/Agreements";
 import { OperationsPage } from "./pages/Operations";
