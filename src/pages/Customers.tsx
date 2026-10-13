@@ -67,6 +67,7 @@ function CustomerDrawer({ customer, onClose, onChanged }: { customer: Customer; 
   const [locations, setLocations] = useState<ServiceLocation[]>([]);
   const [tab, setTab] = useState<"summary" | "contacts" | "locations">("summary");
   const [contactOpen, setContactOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [error, setError] = useState("");
 
@@ -134,7 +135,26 @@ function CustomerDrawer({ customer, onClose, onChanged }: { customer: Customer; 
 
     {contactOpen && <ContactModal customerId={customer.id} onClose={() => setContactOpen(false)} onCreated={contact => { setContacts(current => [...current, contact]); setContactOpen(false); }} />}
     {locationOpen && <LocationModal customerId={customer.id} onClose={() => setLocationOpen(false)} onCreated={location => { setLocations(current => [...current, location]); setLocationOpen(false); }} />}
+    {editOpen && <CustomerEditModal customer={customer} onClose={() => setEditOpen(false)} onUpdated={updated => { onChanged(updated); setEditOpen(false); }} />}
   </Modal>;
+}
+
+function CustomerEditModal({ customer, onClose, onUpdated }: { customer: Customer; onClose: () => void; onUpdated: (customer: Customer) => void }) {
+  const [form, setForm] = useState({ name: customer.name, kind: customer.kind, email: customer.email || "", phone: customer.phone || "", notes: customer.notes || "" });
+  const [busy, setBusy] = useState(false); const [error, setError] = useState("");
+  async function submit(event: FormEvent) {
+    event.preventDefault(); setBusy(true); setError("");
+    try { onUpdated(await endpoints.customers.update(customer.id, { name: form.name, kind: form.kind, email: form.email || null, phone: form.phone || null, notes: form.notes || null })); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to update customer"); }
+    finally { setBusy(false); }
+  }
+  return <Modal title="Edit customer" onClose={onClose}><form className="form-grid" onSubmit={submit}>
+    <label>Name<Input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} minLength={1} required /></label>
+    <label>Customer type<Select value={form.kind} onChange={event => setForm({ ...form, kind: event.target.value as Customer["kind"] })}><option value="residential">Residential</option><option value="commercial">Commercial</option></Select></label>
+    <div className="form-two"><label>Email<Input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></label><label>Phone<Input value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} /></label></div>
+    <label>Notes<TextArea value={form.notes} onChange={event => setForm({ ...form, notes: event.target.value })} /></label>
+    {error && <div className="error-banner">{error}</div>}<Button disabled={busy}>{busy ? "Saving…" : "Save customer"}</Button>
+  </form></Modal>;
 }
 
 function ContactModal({ customerId, onClose, onCreated }: { customerId: string; onClose: () => void; onCreated: (contact: Contact) => void }) {
