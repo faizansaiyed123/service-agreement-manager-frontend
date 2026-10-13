@@ -4,6 +4,7 @@ import { endpoints } from "../lib/api";
 import type { Contact, Customer, ServiceLocation } from "../types";
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, TextArea } from "../components/ui";
 import { Attachments } from "../components/Attachments";
+import { useMemo } from "react";
 
 export function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -11,6 +12,7 @@ export function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modal, setModal] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [selected, setSelected] = useState<Customer | null>(null);
 
   async function load(value = query) {
@@ -24,7 +26,7 @@ export function CustomersPage() {
   useEffect(() => { void load(""); }, []);
 
   return <div>
-    <PageHeader eyebrow="Customer relationship management" title="Customers" description="A customer record anchors service locations, equipment, agreements and billing." actions={<Button onClick={() => setModal(true)}>Add customer</Button>} />
+    <PageHeader eyebrow="Customer relationship management" title="Customers" description="A customer record anchors service locations, equipment, agreements and billing." actions={<div className="page-actions"><Button className="btn-secondary" onClick={() => setImportOpen(true)}>Import CSV</Button><Button onClick={() => setModal(true)}>Add customer</Button></div>} />
     <div className="toolbar card"><Input aria-label="Search customers" placeholder="Search by customer name" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") void load(); }} /><Button onClick={() => void load()}>Search</Button></div>
     {error && <div className="error-banner page-error">{error}</div>}
     <Card>
@@ -34,6 +36,7 @@ export function CustomersPage() {
       </tbody></table></div> : <EmptyState title="No customers" description="Create a customer to start connecting service work." />}
     </Card>
     {modal && <CustomerModal onClose={() => setModal(false)} onCreated={customer => { setCustomers(current => [customer, ...current]); setModal(false); setSelected(customer); }} />}
+    {importOpen && <CustomerImportModal onClose={() => setImportOpen(false)} onCompleted={async () => { setImportOpen(false); await load(""); }} />}
     {selected && <CustomerDrawer customer={selected} onClose={() => setSelected(null)} onChanged={next => { setCustomers(current => current.map(item => item.id === next.id ? next : item)); setSelected(next); }} />}
   </div>;
 }
@@ -79,4 +82,22 @@ function CustomerDrawer({ customer, onClose, onChanged }: { customer: Customer; 
     {tab === "locations" && <div className="list">{locations.length ? locations.map(location => <div className="list-row" key={location.id}><div><strong>{location.name}</strong><span>{location.address_line1}, {location.city}{location.region ? ", " + location.region : ""}</span></div><Badge tone={location.is_active ? "success" : "neutral"}>{location.is_active ? "Active" : "Inactive"}</Badge></div>) : <EmptyState title="No service locations" description="Create a location before scheduling field work." />}</div>}
     <Attachments entityType="customer" entityId={customer.id}/><div className="modal-actions">{customer.status === "active" && <Button className="btn-danger" onClick={() => void deactivate()}>Deactivate customer</Button>}</div>
   </Modal>;
+}
+
+function parseCsv(text:string): Array<Record<string,string>> {
+  const rows:string[][]=[];
+  let row:string[]=[]; let cell=""; let quoted=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];if(ch==="""&&text[i+1]==="""&&quoted){cell+=""";i++;continue}if(ch==="""){quoted=!quoted;continue}if(ch===","&&!quoted){row.push(cell);cell="";continue}if((ch==="\n"||ch==="\r")&&!quoted){if(ch==="\r"&&text[i+1]==="\n")i++;row.push(cell);cell="";if(row.some(value=>value.trim()!==""))rows.push(row);row=[];continue}cell+=ch}if(cell!==""||row.length){row.push(cell);if(row.some(value=>value.trim()!==""))rows.push(row)}if(rows.length<2)return [];
+  const headers=rows[0].map(value=>value.trim().toLowerCase());
+  return rows.slice(1).map(values=>Object.fromEntries(headers.map((header,index)=>[header,(values[index]||"").trim()])));
+}
+
+function CustomerImportModal({onClose,onCompleted}:{onClose:()=>void;onCompleted:()=>Promise<void>}){
+  const [rows,setRows]=useState<Array<Record<string,string>>>([]);
+  const [preview,setPreview]=useState<{total_rows:number;valid_rows:number;invalid_rows:number;rows:Array<{row_number:number;valid:boolean;error_message:string|null}>}|null>(null);
+  const [error,setError]=useState(""); const [busy,setBusy]=useState(false);
+  const fields=useMemo(()=>rows.map(row=>({name:row.name||"",kind:row.kind||"residential",email:row.email||null,phone:row.phone||null,notes:row.notes||null})),[rows]);
+  async function choose(file:File){setError("");try{const parsed=parseCsv(await file.text());if(!parsed.length)throw new Error("The CSV must contain a header row and at least one customer.");setRows(parsed);const result=await endpoints.imports.previewCustomers(parsed) as typeof preview;setPreview(result)}catch(c){setError(c instanceof Error?c.message:"Unable to read CSV")}}
+  async function importRows(){setBusy(true);setError("");try{await endpoints.imports.createCustomers(fields,"sam-import-"+crypto.randomUUID());await onCompleted()}catch(c){setError(c instanceof Error?c.message:"Unable to import customers")}finally{setBusy(false)}}
+  return <Modal title="Import customers from CSV" onClose={onClose}><div className="form-grid"><div className="import-help">Expected columns: <strong>name</strong>, <strong>kind</strong>, <strong>email</strong>, <strong>phone</strong>, <strong>notes</strong>. Maximum 2,000 rows.</div><label className="btn file-btn">Choose CSV<input type="file" accept=".csv,text/csv" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void choose(file);event.currentTarget.value=""}}/></label>{preview&&<div className="import-stats"><strong>{preview.valid_rows} valid</strong><span>{preview.invalid_rows} invalid of {preview.total_rows}</span></div>}{preview&&preview.invalid_rows>0&&<div className="import-errors">{preview.rows.filter(item=>!item.valid).slice(0,8).map(item=><div key={item.row_number}>Row {item.row_number}: {item.error_message||"Invalid row"}</div>)}</div>}{error&&<div className="error-banner">{error}</div>}<Button disabled={!preview||preview.valid_rows===0||busy} onClick={()=>void importRows()}>{busy?"Importing…":"Import valid customers"}</Button></div></Modal>;
 }
