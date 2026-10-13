@@ -5,7 +5,7 @@ import { Button, Input } from "../components/ui";
 
 export function ForgotPasswordPage(){
  const[email,setEmail]=useState(""),[message,setMessage]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);
- async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setMessage("");setError("");try{const result=await endpoints.auth.forgotPassword({email});setMessage(result.message)}catch(c){setError(c instanceof Error?c.message:"Unable to request reset")}finally{setBusy(false)}}
+ async function submit(e:FormEvent){e.preventDefault();setBusy(true);setMessage("");setError("");try{const result=await endpoints.auth.forgotPassword({email});setMessage(result.message)}catch(c){setError(c instanceof Error?c.message:"Unable to request reset")}finally{setBusy(false)}}
  return <div className="auth-layout"><div className="auth-art"><div className="auth-brand"><span className="brand-mark">SA</span><strong>Service Agreement Manager</strong></div><div className="auth-copy"><span className="eyebrow">Account recovery</span><h1>Get back into your workspace securely.</h1><p>We will enqueue a reset message without revealing whether an account exists.</p></div></div><div className="auth-panel"><div className="auth-form-wrap"><span className="eyebrow">Password reset</span><h2>Request a reset link</h2><form className="form-grid" onSubmit={submit}><label>Email<Input type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label>{message&&<div className="success-banner">{message}</div>}{error&&<div className="error-banner">{error}</div>}<Button disabled={busy}>{busy?"Sending…":"Send reset link"}</Button></form><div className="auth-switch"><Link to="/login">Back to sign in</Link></div></div></div></div>;
 }
 
