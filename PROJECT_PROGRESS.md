@@ -36,7 +36,7 @@ Frontend implementation is substantially complete and integrated with the existi
 
 ## Current Git state
 - Frontend branch: main
-- Latest verified frontend commit: `d913e0b90ea6537f88e15134be0e49b61393e12b`
+- Latest verified frontend commit: `e280d4b8d317477f90b49bdcc125b1956983fce8`
 - Backend combined progress record: PROJECT_PROGRESS.md on backend main.
 
 ## Known external blockers
