@@ -8,6 +8,7 @@ import { PlaceholderPage } from "./pages/Placeholder";
 import { CustomersPage } from "./pages/Customers";
 import { AgreementsPage } from "./pages/Agreements";
 import { OperationsPage } from "./pages/Operations";
+import { InvoicesPage } from "./pages/Invoices";
 
 function Protected({children}:{children:ReactNode}){
   const location=useLocation();
@@ -21,7 +22,7 @@ export default function App(){
       <Route path="customers" element={<CustomersPage/>}/>
       <Route path="agreements" element={<AgreementsPage/>}/>
       <Route path="operations" element={<OperationsPage/>}/>
-      <Route path="invoices" element={<PlaceholderPage title="Invoices" eyebrow="Billing"/>}/>
+      <Route path="invoices" element={<InvoicesPage/>}/>
       <Route path="assets" element={<PlaceholderPage title="Equipment" eyebrow="Assets"/>}/>
       <Route path="catalog" element={<PlaceholderPage title="Service catalog" eyebrow="Pricing"/>}/>
       <Route path="settings" element={<PlaceholderPage title="Settings" eyebrow="Administration"/>}/>
