@@ -1,0 +1,81 @@
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
+import { endpoints } from "../lib/api";
+import type { Contact, Customer, ServiceLocation } from "../types";
+import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, TextArea } from "../components/ui";
+
+export function CustomersPage() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [modal, setModal] = useState(false);
+  const [selected, setSelected] = useState<Customer | null>(null);
+
+  async function load(value = query) {
+    setLoading(true); setError("");
+    try {
+      const queryString = value ? "q=" + encodeURIComponent(value) + "&limit=100" : "limit=100";
+      setCustomers(await endpoints.customers.list(queryString));
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to load customers"); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { void load(""); }, []);
+
+  return <div>
+    <PageHeader eyebrow="Customer relationship management" title="Customers" description="A customer record anchors service locations, equipment, agreements and billing." actions={<Button onClick={() => setModal(true)}>Add customer</Button>} />
+    <div className="toolbar card"><Input aria-label="Search customers" placeholder="Search by customer name" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") void load(); }} /><Button onClick={() => void load()}>Search</Button></div>
+    {error && <div className="error-banner page-error">{error}</div>}
+    <Card>
+      <div className="table-head"><strong>{customers.length} customers</strong><span className="muted">Tenant-scoped live data</span></div>
+      {loading ? <div className="center-load"><Spinner /></div> : customers.length ? <div className="table-wrap"><table><thead><tr><th>Customer</th><th>Type</th><th>Contact</th><th>Status</th><th /></tr></thead><tbody>
+        {customers.map(customer => <tr key={customer.id}><td><button className="table-link" onClick={() => setSelected(customer)}><strong>{customer.name}</strong><span>{customer.customer_number}</span></button></td><td className="capitalize">{customer.kind}</td><td>{customer.email || customer.phone || "—"}</td><td><Badge tone={customer.status === "active" ? "success" : "neutral"}>{customer.status}</Badge></td><td><button className="text-button" onClick={() => setSelected(customer)}>Open</button></td></tr>)}
+      </tbody></table></div> : <EmptyState title="No customers" description="Create a customer to start connecting service work." />}
+    </Card>
+    {modal && <CustomerModal onClose={() => setModal(false)} onCreated={customer => { setCustomers(current => [customer, ...current]); setModal(false); setSelected(customer); }} />}
+    {selected && <CustomerDrawer customer={selected} onClose={() => setSelected(null)} onChanged={next => { setCustomers(current => current.map(item => item.id === next.id ? next : item)); setSelected(next); }} />}
+  </div>;
+}
+
+function CustomerModal({ onClose, onCreated }: { onClose: () => void; onCreated: (customer: Customer) => void }) {
+  const [form, setForm] = useState({ name: "", kind: "residential", email: "", phone: "", notes: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function submit(event: FormEvent) {
+    event.preventDefault(); setBusy(true); setError("");
+    try {
+      const customer = await endpoints.customers.create({ name: form.name, kind: form.kind, email: form.email || null, phone: form.phone || null, notes: form.notes || null });
+      onCreated(customer);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to create customer"); }
+    finally { setBusy(false); }
+  }
+  return <Modal title="Add customer" onClose={onClose}><form className="form-grid" onSubmit={submit}>
+    <label>Name<Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></label>
+    <label>Customer type<Select value={form.kind} onChange={e => setForm({ ...form, kind: e.target.value })}><option value="residential">Residential</option><option value="commercial">Commercial</option></Select></label>
+    <div className="form-two"><label>Email<Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></label><label>Phone<Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></label></div>
+    <label>Notes<TextArea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></label>
+    {error && <div className="error-banner">{error}</div>}<Button disabled={busy}>{busy ? "Creating…" : "Create customer"}</Button>
+  </form></Modal>;
+}
+
+function CustomerDrawer({ customer, onClose, onChanged }: { customer: Customer; onClose: () => void; onChanged: (customer: Customer) => void }) {
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [locations, setLocations] = useState<ServiceLocation[]>([]);
+  const [tab, setTab] = useState<"summary" | "contacts" | "locations">("summary");
+  const [error, setError] = useState("");
+  useEffect(() => { Promise.all([endpoints.customers.contacts(customer.id), endpoints.customers.locations(customer.id)]).then(([contactsData, locationsData]) => { setContacts(contactsData); setLocations(locationsData); }).catch(cause => setError(cause instanceof Error ? cause.message : "Unable to load customer details")); }, [customer.id]);
+  async function deactivate() {
+    if (!window.confirm("Deactivate this customer?")) return;
+    try { await endpoints.customers.deactivate(customer.id); onChanged({ ...customer, status: "inactive" }); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to deactivate customer"); }
+  }
+  return <Modal title={customer.name} onClose={onClose}>
+    <div className="drawer-meta"><span>{customer.customer_number}</span><Badge tone={customer.status === "active" ? "success" : "neutral"}>{customer.status}</Badge></div>
+    {error && <div className="error-banner">{error}</div>}
+    <div className="tabs"><button className={tab === "summary" ? "tab active" : "tab"} onClick={() => setTab("summary")}>Summary</button><button className={tab === "contacts" ? "tab active" : "tab"} onClick={() => setTab("contacts")}>Contacts ({contacts.length})</button><button className={tab === "locations" ? "tab active" : "tab"} onClick={() => setTab("locations")}>Locations ({locations.length})</button></div>
+    {tab === "summary" && <div className="detail-grid"><div><span className="eyebrow">Email</span><strong>{customer.email || "Not set"}</strong></div><div><span className="eyebrow">Phone</span><strong>{customer.phone || "Not set"}</strong></div><div className="detail-wide"><span className="eyebrow">Notes</span><p className="muted">{customer.notes || "No notes yet."}</p></div></div>}
+    {tab === "contacts" && <div className="list">{contacts.length ? contacts.map(contact => <div className="list-row" key={contact.id}><div><strong>{contact.full_name}</strong><span>{contact.email || contact.phone || "No contact detail"}</span></div>{contact.is_billing_contact && <Badge tone="info">Billing</Badge>}</div>) : <EmptyState title="No contacts" description="No contacts are configured for this customer yet." />}</div>}
+    {tab === "locations" && <div className="list">{locations.length ? locations.map(location => <div className="list-row" key={location.id}><div><strong>{location.name}</strong><span>{location.address_line1}, {location.city}{location.region ? ", " + location.region : ""}</span></div><Badge tone={location.is_active ? "success" : "neutral"}>{location.is_active ? "Active" : "Inactive"}</Badge></div>) : <EmptyState title="No service locations" description="Create a location before scheduling field work." />}</div>}
+    <div className="modal-actions">{customer.status === "active" && <Button className="btn-danger" onClick={() => void deactivate()}>Deactivate customer</Button>}</div>
+  </Modal>;
+}
