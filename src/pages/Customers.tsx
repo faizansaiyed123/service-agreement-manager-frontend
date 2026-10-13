@@ -84,12 +84,49 @@ function CustomerDrawer({ customer, onClose, onChanged }: { customer: Customer; 
   </Modal>;
 }
 
-function parseCsv(text:string): Array<Record<string,string>> {
-  const rows:string[][]=[];
-  let row:string[]=[]; let cell=""; let quoted=false;
-  for(let i=0;i<text.length;i++){const ch=text[i];if(ch==="""&&text[i+1]==="""&&quoted){cell+=""";i++;continue}if(ch==="""){quoted=!quoted;continue}if(ch===","&&!quoted){row.push(cell);cell="";continue}if((ch==="\n"||ch==="\r")&&!quoted){if(ch==="\r"&&text[i+1]==="\n")i++;row.push(cell);cell="";if(row.some(value=>value.trim()!==""))rows.push(row);row=[];continue}cell+=ch}if(cell!==""||row.length){row.push(cell);if(row.some(value=>value.trim()!==""))rows.push(row)}if(rows.length<2)return [];
-  const headers=rows[0].map(value=>value.trim().toLowerCase());
-  return rows.slice(1).map(values=>Object.fromEntries(headers.map((header,index)=>[header,(values[index]||"").trim()])));
+function parseCsv(text: string): Array<Record<string, string>> {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === '"' && text[i + 1] === '"' && quoted) {
+      cell += '"';
+      i += 1;
+      continue;
+    }
+    if (ch === '"') {
+      quoted = !quoted;
+      continue;
+    }
+    if (ch === "," && !quoted) {
+      row.push(cell);
+      cell = "";
+      continue;
+    }
+    if ((ch === "\n" || ch === "\r") && !quoted) {
+      if (ch === "\r" && text[i + 1] === "\n") i += 1;
+      row.push(cell);
+      cell = "";
+      if (row.some(value => value.trim() !== "")) rows.push(row);
+      row = [];
+      continue;
+    }
+    cell += ch;
+  }
+
+  if (cell !== "" || row.length) {
+    row.push(cell);
+    if (row.some(value => value.trim() !== "")) rows.push(row);
+  }
+  if (rows.length < 2) return [];
+
+  const headers = rows[0].map(value => value.trim().toLowerCase());
+  return rows.slice(1).map(values =>
+    Object.fromEntries(headers.map((header, index) => [header, (values[index] || "").trim()])),
+  );
 }
 
 function CustomerImportModal({onClose,onCompleted}:{onClose:()=>void;onCompleted:()=>Promise<void>}){
