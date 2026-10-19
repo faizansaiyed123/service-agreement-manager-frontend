@@ -4,13 +4,69 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { endpoints } from "../lib/api";
 import { Button, Input } from "../components/ui";
 
-export function AuthPage({mode}:{mode:"login"|"register"}){
-  const navigate=useNavigate(),location=useLocation(),[form,setForm]=useState({email:"",password:"",fullName:"",companyName:""}),[error,setError]=useState(""),[busy,setBusy]=useState(false);
-  async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError("");try{if(mode==="login"){await endpoints.auth.login({email:form.email,password:form.password})}else{await endpoints.auth.register({email:form.email,password:form.password,full_name:form.fullName,company_name:form.companyName})}navigate(location.state?.from?.pathname||"/",{replace:true})}catch(c){setError(c instanceof Error?c.message:"Unable to authenticate")}finally{setBusy(false)}}
-  return <div className="auth-layout"><div className="auth-art"><div className="auth-brand"><span className="brand-mark">SA</span><strong>Service Agreement Manager</strong></div><div className="auth-copy"><span className="eyebrow">Operations, contracts & billing</span><h1>Run the service business from one calm workspace.</h1><p>Keep customers, agreements, maintenance, work orders and receivables connected to one tenant-safe backend.</p><div className="auth-metric"><strong>One source of truth.</strong><span>Every page in this workspace talks to the real API.</span></div></div></div>
-    <div className="auth-panel"><div className="auth-form-wrap"><span className="eyebrow">{mode==="login"?"Welcome back":"New workspace"}</span><h2>{mode==="login"?"Sign in":"Create your company"}</h2><p className="muted">{mode==="login"?"Use your account to continue.":"Create the owner account and company together."}</p>
-      <form onSubmit={submit} className="form-grid">{mode==="register"&&<><label>Company name<Input value={form.companyName} onChange={e=>setForm({...form,companyName:e.target.value})} minLength={2} required/></label><label>Your name<Input value={form.fullName} onChange={e=>setForm({...form,fullName:e.target.value})} minLength={2} required/></label></>}<label>Email<Input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required/></label><label>Password<Input type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} minLength={mode==="register"?12:1} required/></label>{error&&<div className="error-banner">{error}</div>}<Button type="submit" disabled={busy}>{busy?"Working…":mode==="login"?"Sign in":"Create workspace"}</Button></form>
-      <div className="auth-switch">{mode==="login"?<>Need a workspace? <Link to="/register">Create one</Link></>:<>Already have an account? <Link to="/login">Sign in</Link></>}</div>
-      {mode==="login" && <div className="auth-switch"><Link to="/forgot-password">Forgot your password?</Link></div>}
-    </div></div></div>;
+export function AuthPage({ mode }: { mode: "login" | "register" }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [form, setForm] = useState({ email: "", password: "", fullName: "", companyName: "" });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      if (mode === "login") {
+        await endpoints.auth.login({ email: form.email, password: form.password });
+      } else {
+        await endpoints.auth.register({
+          email: form.email,
+          password: form.password,
+          full_name: form.fullName,
+          company_name: form.companyName,
+        });
+      }
+      navigate(location.state?.from?.pathname || "/dashboard", { replace: true });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to authenticate");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="auth-layout">
+      <div className="auth-art">
+        <div className="auth-brand"><span className="brand-mark">SA</span><strong>Service Agreement Manager</strong></div>
+        <div className="auth-copy">
+          <span className="eyebrow">Operations, contracts & billing</span>
+          <h1>Run the service business from one calm workspace.</h1>
+          <p>Keep customers, agreements, maintenance, work orders and receivables connected to one tenant-safe backend.</p>
+          <div className="auth-metric"><strong>One source of truth.</strong><span>Every page in this workspace talks to the real API.</span></div>
+        </div>
+      </div>
+      <div className="auth-panel">
+        <div className="auth-form-wrap">
+          <span className="eyebrow">{mode === "login" ? "Welcome back" : "New workspace"}</span>
+          <h2>{mode === "login" ? "Sign in" : "Create your company"}</h2>
+          <p className="muted">{mode === "login" ? "Use your account to continue." : "Create the owner account and company together."}</p>
+          <form onSubmit={submit} className="form-grid">
+            {mode === "register" && <>
+              <label>Company name<Input value={form.companyName} onChange={event => setForm({ ...form, companyName: event.target.value })} minLength={2} required /></label>
+              <label>Your name<Input value={form.fullName} onChange={event => setForm({ ...form, fullName: event.target.value })} minLength={2} required /></label>
+            </>}
+            <label>Email<Input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} autoComplete="email" required /></label>
+            <label>Password<Input type="password" value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={mode === "register" ? 12 : 1} required /></label>
+            {error && <div className="error-banner" role="alert">{error}</div>}
+            <Button type="submit" disabled={busy}>{busy ? "Working…" : mode === "login" ? "Sign in" : "Create workspace"}</Button>
+          </form>
+          <div className="auth-switch">
+            {mode === "login" ? <>Need a workspace? <Link to="/register">Create one</Link></> : <>Already have an account? <Link to="/login">Sign in</Link></>}
+          </div>
+          {mode === "login" && <div className="auth-switch"><Link to="/forgot-password">Forgot your password?</Link></div>}
+          <div className="auth-switch"><Link to="/">← Back to home</Link></div>
+        </div>
+      </div>
+    </div>
+  );
 }
