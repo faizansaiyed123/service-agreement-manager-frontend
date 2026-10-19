@@ -394,11 +394,11 @@ function CustomerImportJobModal({ job: initialJob, onClose }: { job: CustomerImp
       <Button className="btn-secondary" onClick={() => void reload()} disabled={busy || loading}>Refresh</Button>
       {canRetry && <Button onClick={() => void retry()} disabled={busy || loading}>{busy ? "Retrying…" : "Retry pending rows"}</Button>}
     </div>
-    {editing && <CustomerImportRowModal row={editing} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); await reload(); }} />}
+    {editing && <CustomerImportRowModal jobId={job.id} row={editing} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); await reload(); }} />}
   </Modal>;
 }
 
-function CustomerImportRowModal({ row, onClose, onSaved }: { row: CustomerImportRow; onClose: () => void; onSaved: () => Promise<void> }) {
+function CustomerImportRowModal({ jobId, row, onClose, onSaved }: { jobId: string; row: CustomerImportRow; onClose: () => void; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState({
     name: row.payload.name || "",
     kind: row.payload.kind || "residential",
@@ -414,7 +414,7 @@ function CustomerImportRowModal({ row, onClose, onSaved }: { row: CustomerImport
     setBusy(true);
     setError("");
     try {
-      await endpoints.imports.updateCustomerImportRow(row.id ? (window as unknown as { __samImportJobId?: string }).__samImportJobId || "" : "", row.id, {});
+      await endpoints.imports.updateCustomerImportRow(jobId, row.id, { name: form.name, kind: form.kind, email: form.email || null, phone: form.phone || null, notes: form.notes || null });
       await onSaved();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to correct import row");
