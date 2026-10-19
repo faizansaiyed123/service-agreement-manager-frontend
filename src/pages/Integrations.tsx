@@ -22,7 +22,8 @@ function WebhookPanel() {
   const [items, setItems] = useState<DeliveryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [open, setOpen] = useState(false);\n  const [editingEndpoint, setEditingEndpoint] = useState<DeliveryItem | null>(null);
+  const [open, setOpen] = useState(false);
+  const [editingEndpoint, setEditingEndpoint] = useState<DeliveryItem | null>(null);
   const [secret, setSecret] = useState("");
   const [deliveryEndpoint, setDeliveryEndpoint] = useState<DeliveryItem | null>(null);
   const [deliveries, setDeliveries] = useState<DeliveryItem[]>([]);
