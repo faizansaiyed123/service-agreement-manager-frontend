@@ -3,7 +3,8 @@ import type { FormEvent } from "react";
 import { endpoints } from "../lib/api";
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Spinner, TextArea } from "../components/ui";
 
-type DeliveryItem = { id:string; recipient_email?:string; recipient_phone?:string; subject?:string; event_type:string; status:string; attempt_count:number; created_at:string; name?:string; url?:string; subscribed_events?:string[]; is_active?:boolean; endpoint_id?:string; http_status?:number|null; max_attempts?:number; response_body?:string|null; last_error?:string|null; delivered_at?:string|null; next_attempt_at?:string; };\ntype WebhookAttempt = { id:string; attempt_number:number; status:string; http_status:number|null; response_body:string|null; error_message:string|null; started_at:string; finished_at:string|null };
+type DeliveryItem = { id:string; recipient_email?:string; recipient_phone?:string; subject?:string; event_type:string; status:string; attempt_count:number; created_at:string; name?:string; url?:string; subscribed_events?:string[]; is_active?:boolean; endpoint_id?:string; http_status?:number|null; max_attempts?:number; response_body?:string|null; last_error?:string|null; delivered_at?:string|null; next_attempt_at?:string; };
+type WebhookAttempt = { id:string; attempt_number:number; status:string; http_status:number|null; response_body:string|null; error_message:string|null; started_at:string; finished_at:string|null };
 type WebhookCreated = { secret:string };
 
 const events=["customer.created","customer.updated","agreement.created","agreement.status_changed","work_order.created","work_order.status_changed","invoice.issued","invoice.status_changed","payment.received","maintenance.work_order_generated"];
