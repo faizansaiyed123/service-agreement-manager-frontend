@@ -1,26 +1,36 @@
-import { clearSession, readSession, writeSession } from "./storage";
-import type { Agreement, Branch, Company, Contact, Customer, Equipment, Invoice, RenewalOffer, ServiceCatalogItem, ServiceLocation, TokenPair, User, WorkOrder } from "../types";
+import type { Agreement, Branch, Company, Contact, Customer, Equipment, Invoice, RenewalOffer, ServiceCatalogItem, ServiceLocation, AuthSession, User, WorkOrder } from "../types";
 
 const API_URL = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8000" : "")).replace(/\/$/, "");
 const PREFIX = "/api/v1";
-let refreshPromise: Promise<TokenPair | null> | null = null;
+let refreshPromise: Promise<boolean> | null = null;
 
-async function refreshTokens(): Promise<TokenPair | null> {
-  const session = readSession();
-  if (!session) return null;
+const NO_REFRESH_RETRY = new Set([
+  "/auth/login",
+  "/auth/register",
+  "/auth/refresh",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+  "/auth/change-password",
+]);
+
+async function refreshSession(): Promise<boolean> {
   if (!refreshPromise) {
-    refreshPromise = fetch(`${API_URL}${PREFIX}/auth/refresh`, {
+    refreshPromise = fetch(API_URL + PREFIX + "/auth/refresh", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: session.refreshToken }),
-    }).then(async (response) => {
-      if (!response.ok) return null;
-      const pair = await response.json() as TokenPair;
-      writeSession({ accessToken: pair.access_token, refreshToken: pair.refresh_token, expiresIn: pair.expires_in });
-      return pair;
-    }).catch(() => null).finally(() => { refreshPromise = null; });
+      credentials: "include",
+    }).then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => { refreshPromise = null; });
   }
   return refreshPromise;
+}
+
+function normalizedPath(path: string): string {
+  return path.startsWith("/") ? path : "/" + path;
+}
+
+function notifySessionExpired(): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("sam:session-expired"));
 }
 
 async function parseError(response: Response) {
@@ -33,15 +43,19 @@ async function parseError(response: Response) {
 }
 
 export async function api<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
-  const session = readSession();
+  const requestPath = normalizedPath(path);
   const headers = new Headers(options.headers);
-  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-  if (session?.accessToken) headers.set("Authorization", `Bearer ${session.accessToken}`);
-  const response = await fetch(`${API_URL}${PREFIX}${path.startsWith("/") ? path : `/${path}`}`, { ...options, headers });
-  if (response.status === 401 && retry && session?.refreshToken) {
-    const pair = await refreshTokens();
-    if (pair) return api<T>(path, options, false);
-    clearSession();
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const response = await fetch(API_URL + PREFIX + requestPath, {
+    ...options,
+    headers,
+    credentials: "include",
+  });
+  if (response.status === 401 && retry && !NO_REFRESH_RETRY.has(requestPath)) {
+    if (await refreshSession()) return api<T>(path, options, false);
+    notifySessionExpired();
   }
   if (!response.ok) throw await parseError(response);
   if (response.status === 204) return undefined as T;
@@ -49,14 +63,11 @@ export async function api<T>(path: string, options: RequestInit = {}, retry = tr
 }
 
 export async function apiBlob(path: string, retry = true): Promise<Blob> {
-  const session = readSession();
-  const response = await fetch(`${API_URL}${PREFIX}${path}`, { headers: session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : undefined });
-  if (response.status === 401 && retry && session?.refreshToken) {
-    const pair = await refreshTokens();
-    if (pair) return apiBlob(path, false);
-    clearSession();
-  } else if (response.status === 401) {
-    clearSession();
+  const requestPath = normalizedPath(path);
+  const response = await fetch(API_URL + PREFIX + requestPath, { credentials: "include" });
+  if (response.status === 401 && retry) {
+    if (await refreshSession()) return apiBlob(path, false);
+    notifySessionExpired();
   }
   if (!response.ok) throw await parseError(response);
   return response.blob();
@@ -64,8 +75,8 @@ export async function apiBlob(path: string, retry = true): Promise<Blob> {
 
 export const endpoints = {
   auth: {
-    register: (b: unknown) => api<TokenPair>("/auth/register", { method: "POST", body: JSON.stringify(b) }),
-    login: (b: unknown) => api<TokenPair>("/auth/login", { method: "POST", body: JSON.stringify(b) }),
+    register: (b: unknown) => api<AuthSession>("/auth/register", { method: "POST", body: JSON.stringify(b) }),
+    login: (b: unknown) => api<AuthSession>("/auth/login", { method: "POST", body: JSON.stringify(b) }),
     me: () => api<User>("/auth/me"),
     logout: () => api<void>("/auth/logout", { method: "POST" }),
     changePassword: (b: unknown) => api<void>("/auth/change-password", { method: "POST", body: JSON.stringify(b) }),
