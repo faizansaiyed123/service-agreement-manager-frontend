@@ -30,13 +30,89 @@ function InvoiceCreateModal({customers,onClose,onCreated}:{customers:Customer[];
  return <Modal title="New invoice" onClose={onClose}><form className="form-grid" onSubmit={submit}><div className="form-two"><label>Customer<Select value={form.customerId} onChange={e=>setForm({...form,customerId:e.target.value})}>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</Select></label><label>Service location<Select value={form.locationId} onChange={e=>setForm({...form,locationId:e.target.value})}><option value="">None</option>{locations.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</Select></label></div><div className="form-two"><label>Invoice date<Input type="date" value={form.invoiceDate} onChange={e=>setForm({...form,invoiceDate:e.target.value})} required/></label><label>Due date<Input type="date" value={form.dueDate} onChange={e=>setForm({...form,dueDate:e.target.value})} required/></label></div><div className="form-three"><label>Service code<Input value={form.code} onChange={e=>setForm({...form,code:e.target.value})} required/></label><label>Description<Input value={form.description} onChange={e=>setForm({...form,description:e.target.value})} required/></label><label>Unit price<Input type="number" step="0.01" min="0" value={form.unitPrice} onChange={e=>setForm({...form,unitPrice:e.target.value})} required/></label></div><div className="form-three"><label>Discount %<Input type="number" step="0.01" min="0" max="100" value={form.discount} onChange={e=>setForm({...form,discount:e.target.value})}/></label><label>Tax %<Input type="number" step="0.01" min="0" max="100" value={form.tax} onChange={e=>setForm({...form,tax:e.target.value})}/></label><div/></div><label>Notes<TextArea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label>{error&&<div className="error-banner">{error}</div>}<Button disabled={busy}>{busy?"Creating…":"Create draft invoice"}</Button></form></Modal>;
 }
 
-function InvoiceDetail({invoice,onClose,onChanged}:{invoice:Invoice;onClose:()=>void;onChanged:()=>Promise<void>}){
- const[tab,setTab]=useState<"summary"|"payments">("summary"),[action,setAction]=useState<"payment"|"refund"|"credit"|"void"|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false);
+type InvoicePaymentHistory = { id: string; amount: string; payment_method: string; reference: string | null; received_at: string; notes: string | null };
+type InvoiceRefundHistory = { id: string; payment_id: string; amount: string; refund_method: string; reference: string | null; reason: string; refunded_at: string };
+type InvoiceCreditHistory = { id: string; amount: string; reason: string; created_at: string };
+type InvoiceEventHistory = { id: string; event_type: string; from_status: string | null; to_status: string | null; created_at: string };
+
+function InvoiceDetail({invoice,onClose,onChanged}:{invoice:Invoice;onClose:()=>void;onChanged:()=>Promise<void>}) {
+ const [tab, setTab] = useState<"summary" | "payments">("summary");
+ const [action, setAction] = useState<"payment" | "refund" | "credit" | "void" | null>(null);
+ const [error, setError] = useState("");
+ const [busy, setBusy] = useState(false);
+ const [historyLoading, setHistoryLoading] = useState(false);
+ const [historyError, setHistoryError] = useState("");
+ const [history, setHistory] = useState<{
+   payments: InvoicePaymentHistory[];
+   refunds: InvoiceRefundHistory[];
+   credits: InvoiceCreditHistory[];
+   events: InvoiceEventHistory[];
+ }>({ payments: [], refunds: [], credits: [], events: [] });
+
+ useEffect(() => {
+   if (tab !== "payments") return;
+   let live = true;
+   setHistoryLoading(true);
+   setHistoryError("");
+   Promise.all([
+     endpoints.invoices.payments(invoice.id),
+     endpoints.invoices.credits(invoice.id),
+     endpoints.invoices.events(invoice.id),
+   ]).then(async ([paymentData, creditData, eventData]) => {
+     const payments = paymentData as InvoicePaymentHistory[];
+     const refundGroups = await Promise.all(payments.map(async payment => {
+       try {
+         return await endpoints.invoices.refunds(invoice.id, payment.id) as InvoiceRefundHistory[];
+       } catch {
+         return [];
+       }
+     }));
+     if (live) {
+       setHistory({
+         payments,
+         refunds: refundGroups.flat(),
+         credits: creditData as InvoiceCreditHistory[],
+         events: eventData as InvoiceEventHistory[],
+       });
+     }
+   }).catch(cause => {
+     if (live) setHistoryError(cause instanceof Error ? cause.message : "Unable to load invoice history");
+   }).finally(() => {
+     if (live) setHistoryLoading(false);
+   });
+   return () => { live = false; };
+ }, [tab, invoice.id, invoice.updated_at]);
  async function run(name:string,body?:unknown,idempotency=true){setBusy(true);setError("");try{await endpoints.invoices.action(invoice.id,name,body,idempotency?key():undefined);await onChanged();setAction(null)}catch(c){setError(c instanceof Error?c.message:"Billing action failed")}finally{setBusy(false)}}
  async function pdf(){setError("");try{const blob=await apiBlob(`/invoices/${invoice.id}/pdf`);const url=URL.createObjectURL(blob);const anchor=document.createElement("a");anchor.href=url;anchor.download=`${invoice.invoice_number}.pdf`;anchor.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(c){setError(c instanceof Error?c.message:"Unable to download PDF")}}
- return <Modal title={invoice.invoice_number} onClose={onClose}><div className="drawer-meta"><div><strong>{invoice.invoice_number}</strong><span className="muted">Issued {invoice.issued_at?new Date(invoice.issued_at).toLocaleDateString():"Draft"}</span></div><Badge tone={statusTone(invoice.status)}>{invoice.is_overdue?"Overdue":invoice.status}</Badge></div>{error&&<div className="error-banner">{error}</div>}<div className="tabs"><button className={tab==="summary"?"tab active":"tab"} onClick={()=>setTab("summary")}>Invoice</button><button className={tab==="payments"?"tab active":"tab"} onClick={()=>setTab("payments")}>Payments & credits</button></div>
+ return <Modal title={invoice.invoice_number} onClose={onClose}><div className="drawer-meta"><div><strong>{invoice.invoice_number}</strong><span className="muted">Issued {invoice.issued_at?new Date(invoice.issued_at).toLocaleDateString():"Draft"}</span></div><Badge tone={statusTone(invoice.status)}>{invoice.is_overdue?"Overdue":invoice.status}</Badge></div>{error&&<div className="error-banner">{error}</div>}<div className="tabs"><button className={tab==="summary"?"tab active":"tab"} onClick={()=>setTab("summary")}>Invoice</button><button className={tab==="payments"?"tab active":"tab"} onClick={()=>setTab("payments")}>Payments & activity</button></div>
  {tab==="summary"&&<div><div className="invoice-summary-grid"><div><span className="eyebrow">Subtotal</span><strong>{money(invoice.subtotal,invoice.currency)}</strong></div><div><span className="eyebrow">Tax</span><strong>{money(invoice.tax_amount,invoice.currency)}</strong></div><div><span className="eyebrow">Total</span><strong>{money(invoice.total_amount,invoice.currency)}</strong></div><div><span className="eyebrow">Balance due</span><strong>{money(invoice.balance_due,invoice.currency)}</strong></div></div><Attachments entityType="invoice" entityId={invoice.id}/><div className="line-items"><strong>Line items</strong>{invoice.lines.map(line=><div className="list-row" key={line.id}><div><strong>{line.description}</strong><span>{line.service_code} · {line.quantity} × {line.unit_price}</span></div><strong>{money(line.line_total,invoice.currency)}</strong></div>)}</div></div>}
- {tab==="payments"&&<div className="detail-grid"><div><span className="eyebrow">Paid</span><strong>{money(invoice.amount_paid,invoice.currency)}</strong></div><div><span className="eyebrow">Refunded</span><strong>{money(invoice.amount_refunded,invoice.currency)}</strong></div><div><span className="eyebrow">Credits</span><strong>{money(invoice.credits_applied,invoice.currency)}</strong></div><div><span className="eyebrow">Balance</span><strong>{money(invoice.balance_due,invoice.currency)}</strong></div><div className="detail-wide muted">Payments, refunds and credits are persisted by the backend with idempotency protection.</div></div>}
+ {tab==="payments"&&<div>
+   <div className="detail-grid">
+     <div><span className="eyebrow">Net paid</span><strong>{money(invoice.amount_paid,invoice.currency)}</strong></div>
+     <div><span className="eyebrow">Refunded</span><strong>{money(invoice.amount_refunded,invoice.currency)}</strong></div>
+     <div><span className="eyebrow">Credits applied</span><strong>{money(invoice.credits_applied,invoice.currency)}</strong></div>
+     <div><span className="eyebrow">Balance due</span><strong>{money(invoice.balance_due,invoice.currency)}</strong></div>
+   </div>
+   {historyError&&<div className="error-banner">{historyError}</div>}
+   {historyLoading?<div className="center-load"><Spinner/></div>:<div className="invoice-history-grid">
+     <section className="invoice-history-card">
+       <div className="invoice-history-heading"><h3>Payments</h3><span>{history.payments.length}</span></div>
+       {history.payments.length?<div className="invoice-history-list">{history.payments.map(item=><div className="invoice-history-row" key={item.id}><div><strong>{money(item.amount,invoice.currency)} · {item.payment_method.replace("_"," ")}</strong><span>{new Date(item.received_at).toLocaleString()}{item.notes ? " · " + item.notes : ""}</span></div>{item.reference&&<code>{item.reference}</code>}</div>)}</div>:<EmptyState title="No payments yet" description="Recorded payments will appear here."/>}
+     </section>
+     <section className="invoice-history-card">
+       <div className="invoice-history-heading"><h3>Refunds</h3><span>{history.refunds.length}</span></div>
+       {history.refunds.length?<div className="invoice-history-list">{history.refunds.map(item=><div className="invoice-history-row" key={item.id}><div><strong>{money(item.amount,invoice.currency)} · {item.refund_method.replace("_"," ")}</strong><span>{item.reason} · {new Date(item.refunded_at).toLocaleString()}</span></div></div>)}</div>:<EmptyState title="No refunds" description="Refunds against recorded payments appear here."/>}
+     </section>
+     <section className="invoice-history-card">
+       <div className="invoice-history-heading"><h3>Credits</h3><span>{history.credits.length}</span></div>
+       {history.credits.length?<div className="invoice-history-list">{history.credits.map(item=><div className="invoice-history-row" key={item.id}><div><strong>{money(item.amount,invoice.currency)}</strong><span>{item.reason} · {new Date(item.created_at).toLocaleString()}</span></div></div>)}</div>:<EmptyState title="No credits" description="Applied invoice credits appear here."/>}
+     </section>
+     <section className="invoice-history-card">
+       <div className="invoice-history-heading"><h3>Invoice activity</h3><span>{history.events.length}</span></div>
+       {history.events.length?<div className="invoice-history-list">{history.events.map(item=><div className="invoice-history-row" key={item.id}><div><strong>{item.event_type.replaceAll("_"," ")}</strong><span>{[item.from_status,item.to_status].filter(Boolean).join(" → ")||new Date(item.created_at).toLocaleString()}</span></div></div>)}</div>:<EmptyState title="No activity yet" description="Invoice lifecycle events appear here."/>}
+     </section>
+   </div>}
+ </div>}
  <div className="modal-actions"><Button className="btn-secondary" onClick={()=>void pdf()}>Download PDF</Button>{invoice.status==="draft"&&<Button onClick={()=>void run("issue",undefined,false)}>Issue invoice</Button>}{["issued","partially_paid"].includes(invoice.status)&&invoice.balance_due!=="0.00"&&<Button onClick={()=>setAction("payment")}>Record payment</Button>}{invoice.status!=="void"&&invoice.status!=="paid"&&<Button className="btn-secondary" onClick={()=>setAction("credit")}>Add credit</Button>}{invoice.status==="issued"&&<Button className="btn-danger" onClick={()=>setAction("void")}>Void</Button>}{invoice.amount_paid!=="0.00"&&<Button className="btn-secondary" onClick={()=>setAction("refund")}>Refund payment</Button>}</div>
  {action==="payment"&&<PaymentModal invoice={invoice} onClose={()=>setAction(null)} onSubmit={body=>void run("payments",body)}/>} {action==="credit"&&<ReasonAmountModal title="Add invoice credit" submitLabel="Apply credit" onClose={()=>setAction(null)} onSubmit={(amount,reason)=>void run("credits",{amount,reason})}/>} {action==="void"&&<ReasonModal title="Void invoice" submitLabel="Void invoice" danger onClose={()=>setAction(null)} onSubmit={reason=>void run("void",{reason},false)}/>} {action==="refund"&&<RefundModal invoice={invoice} onClose={()=>setAction(null)} onSubmit={body=>void run("payments/"+String(body.payment_id)+"/refunds",Object.fromEntries(Object.entries(body).filter(([key])=>key!=="payment_id")))}/>} {busy&&<div className="muted busy-line">Saving…</div>}
  </Modal>;
