@@ -1,6 +1,6 @@
 import type { FormEvent } from "react";
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { endpoints } from "../lib/api";
 import { Button, Input } from "../components/ui";
 
@@ -28,8 +28,13 @@ export function ForgotPasswordPage() {
 }
 
 export function ResetPasswordPage() {
-  const location = useLocation();
-  const token = new URLSearchParams(location.hash.slice(1)).get("token") || "";
+  const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("token") || "");
+  useEffect(() => {
+    // Remove the single-use secret from the address bar and browser history immediately.
+    if (token && window.location.hash) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  }, [token]);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [message, setMessage] = useState("");
