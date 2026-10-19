@@ -14,7 +14,7 @@ export function Attachments({entityType,entityId}:{entityType:AttachmentEntity;e
     try{const item=await endpoints.attachments.upload(entityType,entityId,file,description) as Attachment;setItems(current=>[item,...current]);setDescription("")}catch(c){setError(c instanceof Error?c.message:"Unable to upload attachment")}finally{setBusy(false)}
   }
   async function download(item:Attachment){
-    try{const blob=await endpoints.attachments.download(item.id);const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=item.original_filename;a.click();URL.revokeObjectURL(url)}catch(c){setError(c instanceof Error?c.message:"Unable to download attachment")}
+    try{const blob=await endpoints.attachments.download(item.id);const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=item.original_filename;a.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(c){setError(c instanceof Error?c.message:"Unable to download attachment")}
   }
   async function remove(item:Attachment){
     if(!window.confirm("Delete this attachment?"))return;
