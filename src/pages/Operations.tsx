@@ -24,8 +24,88 @@ export function OperationsPage(){
 }
 
 function OrdersTable({orders,schedules,onAction,onUpdated}:{orders:WorkOrder[];schedules:Schedule[];onAction:(order:WorkOrder,action:string,body?:unknown)=>Promise<void>;onUpdated:(order:WorkOrder)=>void}){
- const [assignOrder,setAssignOrder]=useState<WorkOrder|null>(null),[completeOrder,setCompleteOrder]=useState<WorkOrder|null>(null),[cancelOrder,setCancelOrder]=useState<WorkOrder|null>(null);
- return <Card>{orders.length?<div className="table-wrap"><table><thead><tr><th>Work order</th><th>Customer</th><th>Date</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead><tbody>{orders.map(order=><tr key={order.id}><td><strong>{order.work_order_number}</strong><span className="table-sub">{order.title}</span></td><td>{order.customer_id.slice(0,8)}…</td><td>{order.scheduled_for}</td><td><Badge tone={priorityTone(order.priority)}>{order.priority}</Badge></td><td><Badge tone={orderTone(order.status)}>{order.status}</Badge></td><td><div className="row-actions">{(order.status==="scheduled"||order.status==="assigned")&&<button className="text-button" onClick={()=>setAssignOrder(order)}>Assign</button>}{order.status==="assigned"&&<button className="text-button" onClick={()=>void onAction(order,"start")}>Start</button>}{order.status==="in_progress"&&<button className="text-button" onClick={()=>setCompleteOrder(order)}>Complete</button>}{(order.status==="scheduled"||order.status==="assigned")&&<button className="text-button danger-text" onClick={()=>setCancelOrder(order)}>Cancel</button>}</div></td></tr>)}</tbody></table></div>:<EmptyState title="No work orders" description="Create a scheduled job or generate one from a maintenance plan."/>}{assignOrder&&<AssignModal order={assignOrder} onClose={()=>setAssignOrder(null)} onAssigned={updated=>{onUpdated(updated);setAssignOrder(null)}}/>}{completeOrder&&<CompleteModal order={completeOrder} checklist={schedules.find(item=>item.id===completeOrder.maintenance_schedule_id)?.checklist_template ?? []} onClose={()=>setCompleteOrder(null)} onComplete={body=>{void onAction(completeOrder,"complete",body);setCompleteOrder(null)}}/>}{cancelOrder&&<ReasonAction title="Cancel work order" actionLabel="Cancel work order" onClose={()=>setCancelOrder(null)} onSubmit={reason=>{void onAction(cancelOrder,"cancel",{reason});setCancelOrder(null)}}/>}</Card>;
+ const [assignOrder,setAssignOrder]=useState<WorkOrder|null>(null);
+ const [completeOrder,setCompleteOrder]=useState<WorkOrder|null>(null);
+ const [cancelOrder,setCancelOrder]=useState<WorkOrder|null>(null);
+ const [editingOrder,setEditingOrder]=useState<WorkOrder|null>(null);
+ const [detailsOrder,setDetailsOrder]=useState<WorkOrder|null>(null);
+
+ return <Card>{orders.length?<div className="table-wrap"><table><thead><tr><th>Work order</th><th>Customer</th><th>Date</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+ {orders.map(order=><tr key={order.id}>
+   <td><strong>{order.work_order_number}</strong><span className="table-sub">{order.title}</span></td>
+   <td>{order.customer_id.slice(0,8)}…</td><td>{order.scheduled_for}</td>
+   <td><Badge tone={priorityTone(order.priority)}>{order.priority}</Badge></td><td><Badge tone={orderTone(order.status)}>{order.status}</Badge></td>
+   <td><div className="row-actions">
+     <button className="text-button" onClick={()=>setDetailsOrder(order)}>Details</button>
+     {(order.status==="scheduled"||order.status==="assigned")&&<button className="text-button" onClick={()=>setEditingOrder(order)}>Edit</button>}
+     {(order.status==="scheduled"||order.status==="assigned")&&<button className="text-button" onClick={()=>setAssignOrder(order)}>Assign</button>}
+     {order.status==="assigned"&&<button className="text-button" onClick={()=>void onAction(order,"start")}>Start</button>}
+     {order.status==="in_progress"&&<button className="text-button" onClick={()=>setCompleteOrder(order)}>Complete</button>}
+     {(order.status==="scheduled"||order.status==="assigned")&&<button className="text-button danger-text" onClick={()=>setCancelOrder(order)}>Cancel</button>}
+   </div></td>
+ </tr>)}
+ </tbody></table></div>:<EmptyState title="No work orders" description="Create a scheduled job or generate one from a maintenance plan."/>}
+ {assignOrder&&<AssignModal order={assignOrder} onClose={()=>setAssignOrder(null)} onAssigned={updated=>{onUpdated(updated);setAssignOrder(null)}}/>}
+ {completeOrder&&<CompleteModal order={completeOrder} checklist={schedules.find(item=>item.id===completeOrder.maintenance_schedule_id)?.checklist_template ?? []} onClose={()=>setCompleteOrder(null)} onComplete={body=>{void onAction(completeOrder,"complete",body);setCompleteOrder(null)}}/>}
+ {cancelOrder&&<ReasonAction title="Cancel work order" actionLabel="Cancel work order" onClose={()=>setCancelOrder(null)} onSubmit={reason=>{void onAction(cancelOrder,"cancel",{reason});setCancelOrder(null)}}/>}
+ {editingOrder&&<WorkOrderEditModal order={editingOrder} onClose={()=>setEditingOrder(null)} onSaved={updated=>{onUpdated(updated);setEditingOrder(null)}}/>}
+ {detailsOrder&&<WorkOrderDetailsModal order={detailsOrder} onClose={()=>setDetailsOrder(null)}/>}
+ </Card>;
+}
+
+type WorkOrderEvent = { id:string; actor_user_id:string|null; event_type:string; from_status:string|null; to_status:string|null; detail:Record<string,unknown>|null; created_at:string };
+
+function WorkOrderDetailsModal({order,onClose}:{order:WorkOrder;onClose:()=>void}) {
+ const [current,setCurrent]=useState<WorkOrder>(order);
+ const [events,setEvents]=useState<WorkOrderEvent[]>([]);
+ const [loading,setLoading]=useState(true);
+ const [error,setError]=useState("");
+ useEffect(()=>{
+   let live=true;
+   Promise.all([endpoints.workOrders.get(order.id),endpoints.workOrders.events(order.id)])
+    .then(([detail,history])=>{if(live){setCurrent(detail);setEvents(history as WorkOrderEvent[])}})
+    .catch(cause=>{if(live)setError(cause instanceof Error?cause.message:"Unable to load work order details")})
+    .finally(()=>{if(live)setLoading(false)});
+   return()=>{live=false};
+ },[order.id]);
+ return <Modal title={current.work_order_number} onClose={onClose}>
+   <div className="drawer-meta"><div><strong>{current.title}</strong><span className="muted">Scheduled {current.scheduled_for}</span></div><Badge tone={orderTone(current.status)}>{current.status}</Badge></div>
+   {error&&<div className="error-banner" role="alert">{error}</div>}
+   {loading?<div className="center-load"><Spinner/></div>:<>
+     <div className="detail-grid">
+       <div><span className="eyebrow">Priority</span><strong className="capitalize">{current.priority}</strong></div>
+       <div><span className="eyebrow">Customer ID</span><strong>{current.customer_id}</strong></div>
+       <div><span className="eyebrow">Service location</span><strong>{current.service_location_id}</strong></div>
+       <div><span className="eyebrow">Assigned technician</span><strong>{current.assigned_to_user_id||"Not assigned"}</strong></div>
+       <div className="detail-wide"><span className="eyebrow">Description</span><p className="muted">{current.description||"No description entered."}</p></div>
+       {current.completion_notes&&<div className="detail-wide"><span className="eyebrow">Completion notes</span><p className="muted">{current.completion_notes}</p></div>}
+       {current.technician_findings&&<div className="detail-wide"><span className="eyebrow">Technician findings</span><p className="muted">{current.technician_findings}</p></div>}
+     </div>
+     <div className="section-divider"><span>Activity history</span></div>
+     {events.length?<div className="timeline">{events.map(event=><div className="timeline-item" key={event.id}><strong>{event.event_type.replace(/_/g," ")}</strong><span>{event.from_status&&event.to_status?event.from_status+" → "+event.to_status:new Date(event.created_at).toLocaleString()}</span></div>)}</div>:<EmptyState title="No activity yet" description="Changes to this work order will be recorded here."/>}
+   </>}
+ </Modal>;
+}
+
+function WorkOrderEditModal({order,onClose,onSaved}:{order:WorkOrder;onClose:()=>void;onSaved:(order:WorkOrder)=>void}) {
+ const [form,setForm]=useState({title:order.title,description:order.description||"",priority:order.priority,scheduledFor:order.scheduled_for});
+ const [error,setError]=useState("");
+ const [busy,setBusy]=useState(false);
+ async function submit(event:FormEvent){
+   event.preventDefault();setBusy(true);setError("");
+   try{
+     const updated=await endpoints.workOrders.update(order.id,{title:form.title,description:form.description||null,priority:form.priority,scheduled_for:form.scheduledFor});
+     onSaved(updated);
+   }catch(cause){setError(cause instanceof Error?cause.message:"Unable to update work order")}
+   finally{setBusy(false)}
+ }
+ return <Modal title={"Edit "+order.work_order_number} onClose={onClose}><form className="form-grid" onSubmit={submit}>
+   <label>Title<Input value={form.title} onChange={event=>setForm({...form,title:event.target.value})} minLength={2} required/></label>
+   <div className="form-two"><label>Scheduled date<Input type="date" value={form.scheduledFor} onChange={event=>setForm({...form,scheduledFor:event.target.value})} required/></label><label>Priority<Select value={form.priority} onChange={event=>setForm({...form,priority:event.target.value as WorkOrder["priority"]})}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="emergency">Emergency</option></Select></label></div>
+   <label>Description<TextArea value={form.description} onChange={event=>setForm({...form,description:event.target.value})}/></label>
+   {error&&<div className="error-banner" role="alert">{error}</div>}
+   <Button disabled={busy}>{busy?"Saving…":"Save work order"}</Button>
+ </form></Modal>;
 }
 
 function WorkOrderModal({branches,onClose,onCreated}:{branches:Branch[];onClose:()=>void;onCreated:(order:WorkOrder)=>void}){
