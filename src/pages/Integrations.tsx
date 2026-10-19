@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { endpoints } from "../lib/api";
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Spinner, TextArea } from "../components/ui";
 
-type DeliveryItem = { id:string; recipient_email?:string; recipient_phone?:string; subject?:string; event_type:string; status:string; attempt_count:number; created_at:string; name?:string; url?:string; subscribed_events?:string[]; is_active?:boolean; endpoint_id?:string; http_status?:number|null; max_attempts?:number; response_body?:string|null; last_error?:string|null; delivered_at?:string|null; next_attempt_at?:string; };
+type DeliveryItem = { id:string; recipient_email?:string; recipient_phone?:string; subject?:string; body?:string; payload?:Record<string,unknown>; event_type:string; status:string; attempt_count:number; created_at:string; sent_at?:string|null; name?:string; url?:string; subscribed_events?:string[]; is_active?:boolean; endpoint_id?:string; http_status?:number|null; max_attempts?:number; response_body?:string|null; last_error?:string|null; delivered_at?:string|null; next_attempt_at?:string; };\ntype NotificationDetail = { id:string; event_type:string; channel:string; recipient_email:string; subject:string; body:string; payload:Record<string,unknown>; status:string; scheduled_at:string; next_attempt_at:string; attempt_count:number; max_attempts:number; last_error:string|null; provider_message_id:string|null; sent_at:string|null; created_at:string; updated_at:string };\ntype NotificationAttempt = { id:string; notification_id:string; attempt_number:number; status:string; provider:string; provider_message_id:string|null; error_message:string|null; started_at:string; finished_at:string|null };
 type WebhookAttempt = { id:string; attempt_number:number; status:string; http_status:number|null; response_body:string|null; error_message:string|null; started_at:string; finished_at:string|null };
 type WebhookCreated = { secret:string };
 
@@ -12,8 +12,82 @@ function idempotency(prefix:string){return prefix+"-"+crypto.randomUUID()}
 
 export function IntegrationsPage(){const[tab,setTab]=useState<"email"|"webhooks"|"sms">("email");return <div><PageHeader eyebrow="Integrations" title="Delivery & integrations" description="Operate durable email/SMS outboxes and signed webhook endpoints with retry visibility."/><div className="module-tabs"><button className={tab==="email"?"module-tab active":"module-tab"} onClick={()=>setTab("email")}>Email</button><button className={tab==="webhooks"?"module-tab active":"module-tab"} onClick={()=>setTab("webhooks")}>Webhooks</button><button className={tab==="sms"?"module-tab active":"module-tab"} onClick={()=>setTab("sms")}>SMS</button></div>{tab==="email"?<EmailPanel/>:tab==="webhooks"?<WebhookPanel/>:<SmsPanel/>}</div>}
 
-function EmailPanel(){const[items,setItems]=useState<DeliveryItem[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[compose,setCompose]=useState(false);async function load(){try{setItems(await endpoints.notifications.list("limit=100") as DeliveryItem[])}catch(c){setError(c instanceof Error?c.message:"Unable to load notifications")}finally{setLoading(false)}}useEffect(()=>{void load()},[]);async function retry(id:string){try{await endpoints.notifications.retry(id);await load()}catch(c){setError(c instanceof Error?c.message:"Unable to retry email")}}return <div><div className="page-actions settings-action"><Button onClick={()=>setCompose(true)}>Queue email</Button></div>{error&&<div className="error-banner page-error">{error}</div>}<Card>{loading?<div className="center-load"><Spinner/></div>:items.length?<div className="table-wrap"><table><thead><tr><th>Recipient</th><th>Subject</th><th>Event</th><th>Status</th><th>Attempts</th><th /></tr></thead><tbody>{items.map(item=><tr key={item.id}><td>{item.recipient_email}</td><td><strong>{item.subject}</strong></td><td>{item.event_type}</td><td><Badge tone={item.status==="sent"?"success":item.status==="dead"?"danger":"warning"}>{item.status}</Badge></td><td>{item.attempt_count}</td><td>{item.status==="dead"&&<button className="text-button" onClick={()=>void retry(item.id)}>Retry</button>}</td></tr>)}</tbody></table></div>:<EmptyState title="No email deliveries" description="Queued notification messages will appear here."/>}</Card>{compose&&<EmailModal onClose={()=>setCompose(false)} onCreated={()=>{setCompose(false);void load()}}/>}</div>}
+function EmailPanel() {
+  const [items,setItems] = useState<DeliveryItem[]>([]);
+  const [loading,setLoading] = useState(true);
+  const [error,setError] = useState("");
+  const [compose,setCompose] = useState(false);
+  const [selected,setSelected] = useState<DeliveryItem|null>(null);
+
+  async function load() {
+    setError("");
+    try { setItems(await endpoints.notifications.list("limit=100") as DeliveryItem[]); }
+    catch(cause) { setError(cause instanceof Error ? cause.message : "Unable to load notifications"); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { void load(); }, []);
+
+  async function retry(id:string) {
+    setError("");
+    try { await endpoints.notifications.retry(id); await load(); }
+    catch(cause) { setError(cause instanceof Error ? cause.message : "Unable to retry email"); }
+  }
+
+  return <div>
+    <div className="page-actions settings-action"><Button onClick={() => setCompose(true)}>Queue email</Button></div>
+    {error && <div className="error-banner page-error" role="alert">{error}</div>}
+    <Card>{loading ? <div className="center-load"><Spinner/></div> : items.length ? <div className="table-wrap"><table>
+      <thead><tr><th>Recipient</th><th>Subject</th><th>Event</th><th>Status</th><th>Attempts</th><th /></tr></thead>
+      <tbody>{items.map(item=><tr key={item.id}>
+        <td>{item.recipient_email}</td><td><strong>{item.subject}</strong></td><td>{item.event_type}</td>
+        <td><Badge tone={item.status==="sent"?"success":item.status==="dead"?"danger":"warning"}>{item.status}</Badge></td>
+        <td>{item.attempt_count}/{item.max_attempts??"—"}</td>
+        <td><div className="row-actions"><button className="text-button" onClick={() => setSelected(item)}>Details & attempts</button>{item.status==="dead"&&<button className="text-button" onClick={() => void retry(item.id)}>Retry</button>}</div></td>
+      </tr>)}</tbody>
+    </table></div> : <EmptyState title="No email deliveries" description="Queued notification messages will appear here."/>}</Card>
+    {compose&&<EmailModal onClose={() => setCompose(false)} onCreated={() => { setCompose(false); void load(); }}/>}
+    {selected&&<NotificationDetailModal notification={selected} onClose={() => setSelected(null)}/>}
+  </div>;
+}
+
 function EmailModal({onClose,onCreated}:{onClose:()=>void;onCreated:()=>void}){const[form,setForm]=useState({email:"",subject:"",body:"",eventType:"manual.notification"}),[error,setError]=useState(""),[busy,setBusy]=useState(false);async function submit(e:FormEvent){e.preventDefault();setBusy(true);try{await endpoints.notifications.create({event_type:form.eventType,recipient_email:form.email,subject:form.subject,body:form.body,payload:{}},idempotency("email"));onCreated()}catch(c){setError(c instanceof Error?c.message:"Unable to queue email")}finally{setBusy(false)}}return <Modal title="Queue email" onClose={onClose}><form className="form-grid" onSubmit={submit}><label>Recipient<Input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required/></label><label>Subject<Input value={form.subject} onChange={e=>setForm({...form,subject:e.target.value})} required/></label><label>Event type<Input value={form.eventType} onChange={e=>setForm({...form,eventType:e.target.value})} required/></label><label>Body<TextArea value={form.body} onChange={e=>setForm({...form,body:e.target.value})} required/></label>{error&&<div className="error-banner">{error}</div>}<Button disabled={busy}>{busy?"Queueing…":"Queue email"}</Button></form></Modal>}
+
+function NotificationDetailModal({notification,onClose}:{notification:DeliveryItem;onClose:()=>void}) {
+ const [detail,setDetail] = useState<NotificationDetail|null>(null);
+ const [attempts,setAttempts] = useState<NotificationAttempt[]>([]);
+ const [loading,setLoading] = useState(true);
+ const [error,setError] = useState("");
+ useEffect(() => {
+   let live = true;
+   Promise.all([endpoints.notifications.get(notification.id),endpoints.notifications.attempts(notification.id)])
+     .then(([record,history]) => { if(live){setDetail(record as NotificationDetail);setAttempts(history as NotificationAttempt[]);} })
+     .catch(cause => { if(live)setError(cause instanceof Error?cause.message:"Unable to load email delivery details"); })
+     .finally(() => { if(live)setLoading(false); });
+   return () => { live = false; };
+ },[notification.id]);
+
+ return <Modal title="Email delivery details" onClose={onClose}>
+   {error&&<div className="error-banner" role="alert">{error}</div>}
+   {loading?<div className="center-load"><Spinner/></div>:detail&&<>
+     <div className="notification-detail-heading">
+       <div><span className="eyebrow">{detail.event_type}</span><h3>{detail.subject}</h3><p className="muted">To {detail.recipient_email}</p></div>
+       <Badge tone={detail.status==="sent"?"success":detail.status==="dead"?"danger":"warning"}>{detail.status}</Badge>
+     </div>
+     <div className="detail-grid">
+       <div><span className="eyebrow">Attempts</span><strong>{detail.attempt_count} / {detail.max_attempts}</strong></div>
+       <div><span className="eyebrow">Queued</span><strong>{new Date(detail.created_at).toLocaleString()}</strong></div>
+       <div><span className="eyebrow">Next attempt</span><strong>{detail.status==="sent"||detail.status==="dead"?"—":new Date(detail.next_attempt_at).toLocaleString()}</strong></div>
+       <div><span className="eyebrow">Sent at</span><strong>{detail.sent_at?new Date(detail.sent_at).toLocaleString():"Not sent"}</strong></div>
+       {detail.last_error&&<div className="detail-wide"><span className="eyebrow">Last error</span><p className="error-text">{detail.last_error}</p></div>}
+       <div className="detail-wide"><span className="eyebrow">Message body</span><div className="notification-message">{detail.body}</div></div>
+     </div>
+     <div className="section-divider"><span>Delivery attempts</span></div>
+     {attempts.length?<div className="table-wrap"><table><thead><tr><th>#</th><th>Status</th><th>Provider</th><th>Started</th><th>Result</th></tr></thead><tbody>
+       {attempts.map(attempt=><tr key={attempt.id}><td>{attempt.attempt_number}</td><td><Badge tone={attempt.status==="sent"?"success":attempt.status==="failed"?"danger":"warning"}>{attempt.status}</Badge></td><td>{attempt.provider}</td><td>{new Date(attempt.started_at).toLocaleString()}</td><td>{attempt.error_message||attempt.provider_message_id||"—"}</td></tr>)}
+     </tbody></table></div>:<EmptyState title="No delivery attempts" description="An attempt record will appear when delivery is processed."/>}
+   </>}
+ </Modal>;
+}
 
 function SmsPanel(){const[items,setItems]=useState<DeliveryItem[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[compose,setCompose]=useState(false);async function load(){try{setItems(await endpoints.sms.list() as DeliveryItem[])}catch(c){setError(c instanceof Error?c.message:"Unable to load SMS")}finally{setLoading(false)}}useEffect(()=>{void load()},[]);return <div><div className="page-actions settings-action"><Button onClick={()=>setCompose(true)}>Queue SMS</Button></div>{error&&<div className="error-banner page-error">{error}</div>}<Card>{loading?<div className="center-load"><Spinner/></div>:items.length?<div className="table-wrap"><table><thead><tr><th>Phone</th><th>Event</th><th>Status</th><th>Attempts</th><th>Created</th></tr></thead><tbody>{items.map(item=><tr key={item.id}><td>{item.recipient_phone}</td><td>{item.event_type}</td><td><Badge tone={item.status==="sent"?"success":item.status==="dead"?"danger":"warning"}>{item.status}</Badge></td><td>{item.attempt_count}</td><td>{new Date(item.created_at).toLocaleString()}</td></tr>)}</tbody></table></div>:<EmptyState title="No SMS messages" description="Queued SMS deliveries will appear here when an SMS provider is configured."/>}</Card>{compose&&<SmsModal onClose={()=>setCompose(false)} onCreated={()=>{setCompose(false);void load()}}/>}</div>}
 function SmsModal({onClose,onCreated}:{onClose:()=>void;onCreated:()=>void}){const[form,setForm]=useState({phone:"",body:"",eventType:"manual.notification"}),[error,setError]=useState(""),[busy,setBusy]=useState(false);async function submit(e:FormEvent){e.preventDefault();setBusy(true);try{await endpoints.sms.create({event_type:form.eventType,recipient_phone:form.phone,body:form.body,payload:{}},idempotency("sms"));onCreated()}catch(c){setError(c instanceof Error?c.message:"Unable to queue SMS")}finally{setBusy(false)}}return <Modal title="Queue SMS" onClose={onClose}><form className="form-grid" onSubmit={submit}><label>Phone<Input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} required/></label><label>Event type<Input value={form.eventType} onChange={e=>setForm({...form,eventType:e.target.value})} required/></label><label>Message<TextArea value={form.body} onChange={e=>setForm({...form,body:e.target.value})} maxLength={1600} required/></label>{error&&<div className="error-banner">{error}</div>}<Button disabled={busy}>{busy?"Queueing…":"Queue SMS"}</Button></form></Modal>}
