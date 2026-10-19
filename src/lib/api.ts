@@ -48,12 +48,14 @@ export async function api<T>(path: string, options: RequestInit = {}, retry = tr
   return await response.json() as T;
 }
 
-export async function apiBlob(path: string): Promise<Blob> {
+export async function apiBlob(path: string, retry = true): Promise<Blob> {
   const session = readSession();
   const response = await fetch(`${API_URL}${PREFIX}${path}`, { headers: session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : undefined });
-  if (response.status === 401 && session?.refreshToken) {
+  if (response.status === 401 && retry && session?.refreshToken) {
     const pair = await refreshTokens();
-    if (pair) return apiBlob(path);
+    if (pair) return apiBlob(path, false);
+    clearSession();
+  } else if (response.status === 401) {
     clearSession();
   }
   if (!response.ok) throw await parseError(response);
