@@ -1,7 +1,7 @@
 import { clearSession, readSession, writeSession } from "./storage";
 import type { Agreement, Branch, Company, Contact, Customer, Equipment, Invoice, RenewalOffer, ServiceCatalogItem, ServiceLocation, TokenPair, User, WorkOrder } from "../types";
 
-const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
+const API_URL = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8000" : "")).replace(/\/$/, "");
 const PREFIX = "/api/v1";
 let refreshPromise: Promise<TokenPair | null> | null = null;
 
