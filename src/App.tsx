@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AppShell } from "./components/layout";
-import { readSession } from "./lib/storage";
+import { endpoints } from "./lib/api";
 import { AuthPage } from "./pages/Auth";
 import { OverviewPage } from "./pages/Overview";
 import { CustomersPage } from "./pages/Customers";
@@ -16,7 +17,16 @@ import { IntegrationsPage } from "./pages/Integrations";
 
 function Protected({children}:{children:ReactNode}){
   const location=useLocation();
-  return readSession()?<>{children}</>:<Navigate to="/login" replace state={{from:location}}/>;
+  const [status,setStatus]=useState<"checking"|"authenticated"|"unauthenticated">("checking");
+  useEffect(()=>{
+    let live=true;
+    const onExpired=()=>{if(live)setStatus("unauthenticated")};
+    window.addEventListener("sam:session-expired",onExpired);
+    endpoints.auth.me().then(()=>{if(live)setStatus("authenticated")}).catch(()=>{if(live)setStatus("unauthenticated")});
+    return ()=>{live=false;window.removeEventListener("sam:session-expired",onExpired)};
+  },[]);
+  if(status==="checking")return <div className="center-load" role="status">Checking your session…</div>;
+  return status==="authenticated"?<>{children}</>:<Navigate to="/login" replace state={{from:location}}/>;
 }
 export default function App(){
   return <Routes>
