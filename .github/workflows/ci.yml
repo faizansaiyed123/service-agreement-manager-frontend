@@ -8,13 +8,23 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      VITE_API_URL: http://localhost:8000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-      - run: npm install
+      - run: npm install --no-audit --no-fund
       - run: npm run build
+      - name: Build production frontend image
+        run: docker build --tag service-agreement-manager-frontend:ci .
+      - name: Smoke-test the production frontend container
+        run: |
+          docker run --detach --name sam-frontend-ci --publish 127.0.0.1:8080:80 service-agreement-manager-frontend:ci
+          trap "docker rm --force sam-frontend-ci >/dev/null 2>&1 || true" EXIT
+          for attempt in $(seq 1 15); do
+            if curl --fail --silent http://127.0.0.1:8080/healthz >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:8080/healthz
+          curl --fail --silent --output /dev/null "http://127.0.0.1:8080/reset-password?token=ci-smoke-test"
+          docker exec sam-frontend-ci nginx -t
