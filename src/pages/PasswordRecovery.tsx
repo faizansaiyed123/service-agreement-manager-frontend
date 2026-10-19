@@ -1,6 +1,6 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { endpoints } from "../lib/api";
 import { Button, Input } from "../components/ui";
 
@@ -28,8 +28,8 @@ export function ForgotPasswordPage() {
 }
 
 export function ResetPasswordPage() {
-  const [params] = useSearchParams();
-  const token = params.get("token") || "";
+  const location = useLocation();
+  const token = new URLSearchParams(location.hash.slice(1)).get("token") || "";
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [message, setMessage] = useState("");
