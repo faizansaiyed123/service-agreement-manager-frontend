@@ -12,7 +12,9 @@ export function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modal, setModal] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);\n  const [importHistoryOpen, setImportHistoryOpen] = useState(false);\n  const [selectedImport, setSelectedImport] = useState<CustomerImportDetail | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importHistoryOpen, setImportHistoryOpen] = useState(false);
+  const [selectedImport, setSelectedImport] = useState<CustomerImportDetail | null>(null);
   const [selected, setSelected] = useState<Customer | null>(null);
 
   async function load(value = query) {
