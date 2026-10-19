@@ -8,7 +8,7 @@ Production-oriented React/Vite frontend for the Service Agreement Manager backen
 2. Run `npm install`.
 3. Start the app with `npm run dev`.
 
-For local development, the default API URL is `http://localhost:8000`. Set `VITE_API_URL` to the public HTTPS origin of your deployed API before building for production. Leave it unset only when your reverse proxy serves the frontend and forwards `/api/v1` to the API on the same origin. Vite embeds this value into the client bundle, so never put secrets in frontend environment variables.
+For local development, the default API URL is `http://localhost:8000`. For production, leave `VITE_API_URL` unset and use the recommended same-origin HTTPS reverse proxy that forwards `/api/v1` to the API. Vite embeds this value into the client bundle, so never put secrets in frontend environment variables. The production Nginx policy intentionally restricts API connections to the same origin.
 
 ## Verification
 
@@ -16,12 +16,12 @@ For local development, the default API URL is `http://localhost:8000`. Set `VITE
 
 ## Backend integration
 
-The frontend uses the real FastAPI endpoints under `/api/v1`, including bearer access tokens and refresh-token rotation. No mock API layer is used.
+The frontend uses the real FastAPI endpoints under `/api/v1` with server-set `HttpOnly` access/refresh cookies and automatic cookie-based session refresh. It never reads or stores bearer tokens in JavaScript-accessible storage. Startup also removes the legacy token key left by earlier versions. No mock API layer is used.
 
 
 ## Production deployment checklist
 
-- Configure `VITE_API_URL` at build time, or route `/api/v1` through a same-origin reverse proxy.
+- Prefer a same-origin reverse proxy for `/api/v1`; if using a separate API hostname, update the CSP `connect-src` policy and backend cookie/CORS configuration.
 - Serve the app and API only over HTTPS in production.
 - Configure the static host to serve `index.html` for client-side routes (SPA fallback).
 - Verify the deployed browser can reach the API origin and that the backend `CORS_ORIGINS` contains the exact frontend origin when cross-origin requests are used.
@@ -32,7 +32,7 @@ The frontend uses the real FastAPI endpoints under `/api/v1`, including bearer a
 
 The repository includes a multi-stage `Dockerfile` and Nginx configuration for production static hosting, including an SPA fallback for React Router paths and a `/healthz` health check.
 
-For a same-origin deployment, build without `VITE_API_URL` and configure your HTTPS reverse proxy to route `/api/v1/` to the backend API and all other paths to the frontend container. The production backend Compose file binds the API to host loopback on port 8000. For separate frontend and API origins, build with the public API origin, for example `docker build --build-arg VITE_API_URL=https://api.example.com -t service-agreement-manager-frontend .`, and configure the backend `CORS_ORIGINS` to the exact HTTPS frontend origin.
+For a same-origin deployment, build without `VITE_API_URL` and configure your HTTPS reverse proxy to route `/api/v1/` to the backend API and all other paths to the frontend container. The production backend Compose file binds the API to host loopback on port 8000. For a separate same-site API hostname, build with the public API origin, for example `docker build --build-arg VITE_API_URL=https://api.example.com -t service-agreement-manager-frontend .`, configure the backend `CORS_ORIGINS` to the exact HTTPS frontend origin, and amend `connect-src` in `nginx.conf` to allow that exact API origin. Same-origin deployment is less error-prone.
 
 Example local image smoke test:
 

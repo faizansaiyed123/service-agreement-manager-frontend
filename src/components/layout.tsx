@@ -1,7 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { endpoints } from "../lib/api";
-import { clearSession } from "../lib/storage";
 import type { User } from "../types";
 
 const nav = [
@@ -18,8 +17,8 @@ const nav = [
 ];
 export function AppShell(){
   const navigate=useNavigate(),location=useLocation(),[user,setUser]=useState<User|null>(null),[open,setOpen]=useState(false);
-  useEffect(()=>{let live=true; endpoints.auth.me().then(value=>{if(live)setUser(value)}).catch(()=>{clearSession();navigate("/login",{replace:true})});return()=>{live=false}},[navigate]);
-  async function logout(){try{await endpoints.auth.logout()}finally{clearSession();navigate("/login",{replace:true})}}
+  useEffect(()=>{let live=true; endpoints.auth.me().then(value=>{if(live)setUser(value)}).catch(()=>{navigate("/login",{replace:true})});return()=>{live=false}},[navigate]);
+  async function logout(){try{await endpoints.auth.logout()}finally{navigate("/login",{replace:true})}}
   const current=nav.find(item=>item.to!=="/"&&location.pathname.startsWith(item.to))?.label||"Overview";
   return <div className="app-shell">
     <aside className={`sidebar ${open?"sidebar-open":""}`}>
