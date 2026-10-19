@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { endpoints } from "../lib/api";
 import { Button, EmptyState, Input, Modal, TextArea } from "./ui";
 
@@ -53,7 +54,7 @@ export function Attachments({ entityType, entityId }: { entityType: AttachmentEn
     }
   }
 
-  async function saveDescription(event: React.FormEvent) {
+  async function saveDescription(event: FormEvent) {
     event.preventDefault();
     if (!editing) return;
     setSavingDescription(true);
