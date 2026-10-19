@@ -145,6 +145,7 @@ export const endpoints = {
     update: (id: string, b: unknown) => api<Invoice>(`/invoices/${id}`, { method: "PATCH", body: JSON.stringify(b) }),
     action: (id: string, action: string, b?: unknown, idempotencyKey?: string) => api<unknown>(`/invoices/${id}/${action}`, { method: "POST", headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined, ...(b === undefined ? {} : { body: JSON.stringify(b) }) }),
     payments: (id: string) => api<unknown[]>(`/invoices/${id}/payments`),
+    refunds: (id: string, paymentId: string) => api<unknown[]>(`/invoices/${id}/payments/${paymentId}/refunds`),
     credits: (id: string) => api<unknown[]>(`/invoices/${id}/credits`),
     events: (id: string) => api<unknown[]>(`/invoices/${id}/events`),
   },
