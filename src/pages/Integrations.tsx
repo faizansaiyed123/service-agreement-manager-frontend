@@ -23,6 +23,7 @@ function WebhookPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
+  const [editingEndpoint, setEditingEndpoint] = useState<DeliveryItem | null>(null);
   const [secret, setSecret] = useState("");
   const [deliveryEndpoint, setDeliveryEndpoint] = useState<DeliveryItem | null>(null);
   const [deliveries, setDeliveries] = useState<DeliveryItem[]>([]);
@@ -111,11 +112,11 @@ function WebhookPanel() {
       {items.map(item => <tr key={item.id}>
         <td><strong>{item.name}</strong></td><td>{item.url}</td><td>{(item.subscribed_events ?? []).length}</td>
         <td><Badge tone={item.is_active ? "success" : "neutral"}>{item.is_active ? "Active" : "Inactive"}</Badge></td>
-        <td><div className="row-actions"><button className="text-button" onClick={() => void showDeliveries(item)}>Deliveries</button><button className="text-button" onClick={() => void rotate(item.id)}>Rotate secret</button>{item.is_active && <button className="text-button danger-text" onClick={() => void disable(item.id)}>Deactivate</button>}</div></td>
+        <td><div className="row-actions"><button className="text-button" onClick={() => void showDeliveries(item)}>Deliveries</button><button className="text-button" onClick={() => setEditingEndpoint(item)}>Edit</button><button className="text-button" onClick={() => void rotate(item.id)}>Rotate secret</button>{item.is_active && <button className="text-button danger-text" onClick={() => void disable(item.id)}>Deactivate</button>}</div></td>
       </tr>)}
     </tbody></table></div> : <EmptyState title="No webhook endpoints" description="Connect your service systems with signed, retryable webhook delivery."/>}</Card>
 
-    {open && <WebhookModal onClose={() => setOpen(false)} onCreated={(result: WebhookCreated) => { setOpen(false); setSecret(result.secret); void load(); }} />}
+    {(open || editingEndpoint) && <WebhookModal key={editingEndpoint?.id || "new-endpoint"} endpoint={editingEndpoint || undefined} onClose={() => { setOpen(false); setEditingEndpoint(null); }} onCreated={(result: WebhookCreated) => { setOpen(false); setSecret(result.secret); void load(); }} onUpdated={() => { setEditingEndpoint(null); void load(); }} />}
 
     {deliveryEndpoint && <Modal title={`Deliveries · ${deliveryEndpoint.name || "Webhook endpoint"}`} onClose={() => { setDeliveryEndpoint(null); setDeliveries([]); setDeliveryError(""); }}>
       <p className="muted">Recent delivery attempts for <strong>{deliveryEndpoint.url}</strong>.</p>
@@ -145,4 +146,31 @@ function WebhookAttemptsModal({ delivery, attempts, loading, error, onClose }: {
   </Modal>;
 }
 
-function WebhookModal({onClose,onCreated}:{onClose:()=>void;onCreated:(result:WebhookCreated)=>void}){const[form,setForm]=useState({name:"",url:"",events:["customer.created"]}),[error,setError]=useState(""),[busy,setBusy]=useState(false);async function submit(e:FormEvent){e.preventDefault();setBusy(true);try{const result=await endpoints.webhooks.create({name:form.name,url:form.url,events:form.events,is_active:true}) as WebhookCreated;onCreated(result)}catch(c){setError(c instanceof Error?c.message:"Unable to create webhook")}finally{setBusy(false)}}return <Modal title="Add webhook" onClose={onClose}><form className="form-grid" onSubmit={submit}><label>Name<Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} required/></label><label>HTTPS endpoint URL<Input type="url" value={form.url} onChange={e=>setForm({...form,url:e.target.value})} placeholder="https://example.com/hooks" required/></label><div><span className="eyebrow">Events</span><div className="event-grid">{events.map(event=><label className="check-item" key={event}><input type="checkbox" checked={form.events.includes(event)} onChange={e=>setForm({...form,events:e.target.checked?[...form.events,event]:form.events.filter(item=>item!==event)})}/>{event}</label>)}</div></div>{error&&<div className="error-banner">{error}</div>}<Button disabled={busy||form.events.length===0}>{busy?"Creating…":"Create endpoint"}</Button></form></Modal>}
+function WebhookModal({endpoint,onClose,onCreated,onUpdated}:{endpoint?:DeliveryItem;onClose:()=>void;onCreated:(result:WebhookCreated)=>void;onUpdated:()=>void}) {
+ const[form,setForm]=useState({
+   name:endpoint?.name||"",url:endpoint?.url||"",events:endpoint?.subscribed_events||["customer.created"],isActive:endpoint?.is_active??true,
+ });
+ const[error,setError]=useState("");
+ const[busy,setBusy]=useState(false);
+ async function submit(event:FormEvent){
+   event.preventDefault();setBusy(true);setError("");
+   try{
+     if(endpoint){
+       await endpoints.webhooks.update(endpoint.id,{name:form.name,url:form.url,events:form.events,is_active:form.isActive});
+       onUpdated();
+     }else{
+       const result=await endpoints.webhooks.create({name:form.name,url:form.url,events:form.events,is_active:form.isActive}) as WebhookCreated;
+       onCreated(result);
+     }
+   }catch(cause){setError(cause instanceof Error?cause.message:"Unable to save webhook endpoint")}
+   finally{setBusy(false)}
+ }
+ return <Modal title={endpoint?"Edit webhook endpoint":"Add webhook"} onClose={onClose}><form className="form-grid" onSubmit={submit}>
+   <label>Name<Input value={form.name} onChange={event=>setForm({...form,name:event.target.value})} minLength={2} required/></label>
+   <label>HTTPS endpoint URL<Input type="url" value={form.url} onChange={event=>setForm({...form,url:event.target.value})} placeholder="https://example.com/hooks" required/></label>
+   <div><span className="eyebrow">Subscribed events</span><div className="event-grid">{events.map(event=><label className="check-item" key={event}><input type="checkbox" checked={form.events.includes(event)} onChange={change=>setForm({...form,events:change.target.checked?[...form.events,event]:form.events.filter(item=>item!==event)})}/>{event}</label>)}</div></div>
+   {endpoint&&<label className="check-item"><input type="checkbox" checked={form.isActive} onChange={event=>setForm({...form,isActive:event.target.checked})}/> Endpoint is active</label>}
+   {error&&<div className="error-banner" role="alert">{error}</div>}
+   <Button disabled={busy||form.events.length===0}>{busy?"Saving…":endpoint?"Save endpoint":"Create endpoint"}</Button>
+ </form></Modal>;
+}

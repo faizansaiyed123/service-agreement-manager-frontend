@@ -13,6 +13,8 @@ export function CustomersPage() {
   const [error, setError] = useState("");
   const [modal, setModal] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [importHistoryOpen, setImportHistoryOpen] = useState(false);
+  const [selectedImport, setSelectedImport] = useState<CustomerImportDetail | null>(null);
   const [selected, setSelected] = useState<Customer | null>(null);
 
   async function load(value = query) {
@@ -26,7 +28,7 @@ export function CustomersPage() {
   useEffect(() => { void load(""); }, []);
 
   return <div>
-    <PageHeader eyebrow="Customer relationship management" title="Customers" description="A customer record anchors service locations, equipment, agreements and billing." actions={<div className="page-actions"><Button className="btn-secondary" onClick={() => setImportOpen(true)}>Import CSV</Button><Button onClick={() => setModal(true)}>Add customer</Button></div>} />
+    <PageHeader eyebrow="Customer relationship management" title="Customers" description="A customer record anchors service locations, equipment, agreements and billing." actions={<div className="page-actions"><Button className="btn-secondary" onClick={() => setImportHistoryOpen(true)}>Import history</Button><Button className="btn-secondary" onClick={() => setImportOpen(true)}>Import CSV</Button><Button onClick={() => setModal(true)}>Add customer</Button></div>} />
     <div className="toolbar card"><Input aria-label="Search customers" placeholder="Search by customer name" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") void load(); }} /><Button onClick={() => void load()}>Search</Button></div>
     {error && <div className="error-banner page-error">{error}</div>}
     <Card>
@@ -36,7 +38,7 @@ export function CustomersPage() {
       </tbody></table></div> : <EmptyState title="No customers" description="Create a customer to start connecting service work." />}
     </Card>
     {modal && <CustomerModal onClose={() => setModal(false)} onCreated={customer => { setCustomers(current => [customer, ...current]); setModal(false); setSelected(customer); }} />}
-    {importOpen && <CustomerImportModal onClose={() => setImportOpen(false)} onCompleted={async () => { setImportOpen(false); await load(""); }} />}
+    {importOpen && <CustomerImportModal onClose={() => setImportOpen(false)} onCompleted={async () => { setImportOpen(false); await load(""); }} />}\n    {importHistoryOpen && <CustomerImportHistoryModal onClose={() => setImportHistoryOpen(false)} onOpenJob={job => { setImportHistoryOpen(false); setSelectedImport(job); }} />}\n    {selectedImport && <CustomerImportJobModal job={selectedImport} onClose={() => { setSelectedImport(null); void load(""); }} />}
     {selected && <CustomerDrawer customer={selected} onClose={() => setSelected(null)} onChanged={next => { setCustomers(current => current.map(item => item.id === next.id ? next : item)); setSelected(next); }} />}
   </div>;
 }
@@ -275,4 +277,162 @@ function CustomerImportModal({onClose,onCompleted}:{onClose:()=>void;onCompleted
   async function choose(file:File){setError("");try{const parsed=parseCsv(await file.text());if(!parsed.length)throw new Error("The CSV must contain a header row and at least one customer.");setRows(parsed);const result=await endpoints.imports.previewCustomers(parsed) as typeof preview;setPreview(result)}catch(c){setError(c instanceof Error?c.message:"Unable to read CSV")}}
   async function importRows(){setBusy(true);setError("");try{await endpoints.imports.createCustomers(fields,"sam-import-"+crypto.randomUUID());await onCompleted()}catch(c){setError(c instanceof Error?c.message:"Unable to import customers")}finally{setBusy(false)}}
   return <Modal title="Import customers from CSV" onClose={onClose}><div className="form-grid"><div className="import-help">Expected columns: <strong>name</strong>, <strong>kind</strong>, <strong>email</strong>, <strong>phone</strong>, <strong>notes</strong>. Maximum 2,000 rows.</div><label className="btn file-btn">Choose CSV<input type="file" accept=".csv,text/csv" hidden onChange={event=>{const file=event.target.files?.[0];if(file)void choose(file);event.currentTarget.value=""}}/></label>{preview&&<div className="import-stats"><strong>{preview.valid_rows} valid</strong><span>{preview.invalid_rows} invalid of {preview.total_rows}</span></div>}{preview&&preview.invalid_rows>0&&<div className="import-errors">{preview.rows.filter(item=>!item.valid).slice(0,8).map(item=><div key={item.row_number}>Row {item.row_number}: {item.error_message||"Invalid row"}</div>)}</div>}{error&&<div className="error-banner">{error}</div>}<Button disabled={!preview||preview.valid_rows===0||busy} onClick={()=>void importRows()}>{busy?"Importing…":"Import valid customers"}</Button></div></Modal>;
+}
+
+
+type CustomerImportJob = {
+  id: string;
+  status: string;
+  total_rows: number;
+  imported_rows: number;
+  failed_rows: number;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+type CustomerImportRow = {
+  id: string;
+  row_number: number;
+  status: string;
+  payload: { name?: string; kind?: string; email?: string | null; phone?: string | null; notes?: string | null };
+  customer_id: string | null;
+  error_code: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+};
+type CustomerImportDetail = CustomerImportJob & { rows: CustomerImportRow[] };
+
+function importStatusTone(status: string): "neutral" | "success" | "warning" | "danger" {
+  if (status === "completed" || status === "imported") return "success";
+  if (status === "partial" || status === "processing" || status === "pending") return "warning";
+  if (status === "failed") return "danger";
+  return "neutral";
+}
+
+function CustomerImportHistoryModal({ onClose, onOpenJob }: { onClose: () => void; onOpenJob: (job: CustomerImportDetail) => void }) {
+  const [items, setItems] = useState<CustomerImportJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let live = true;
+    endpoints.imports.listCustomers().then(result => { if (live) setItems(result as CustomerImportJob[]); })
+      .catch(cause => { if (live) setError(cause instanceof Error ? cause.message : "Unable to load import history"); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, []);
+
+  async function openJob(job: CustomerImportJob) {
+    setError("");
+    try {
+      onOpenJob(await endpoints.imports.getCustomerImport(job.id) as CustomerImportDetail);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to open import details");
+    }
+  }
+
+  return <Modal title="Customer import history" onClose={onClose}>
+    <p className="muted">Review completed imports, find failed rows and retry corrected data.</p>
+    {error && <div className="error-banner" role="alert">{error}</div>}
+    {loading ? <div className="center-load"><Spinner /></div> : items.length ? <div className="table-wrap"><table><thead><tr><th>Created</th><th>Status</th><th>Imported</th><th>Failed</th><th /></tr></thead><tbody>
+      {items.map(job => <tr key={job.id}>
+        <td>{new Date(job.created_at).toLocaleString()}</td>
+        <td><Badge tone={importStatusTone(job.status)}>{job.status}</Badge></td>
+        <td>{job.imported_rows}/{job.total_rows}</td><td>{job.failed_rows}</td>
+        <td><button className="text-button" onClick={() => void openJob(job)}>Review</button></td>
+      </tr>)}
+    </tbody></table></div> : <EmptyState title="No import jobs" description="Customer CSV imports and their results will appear here." />}
+  </Modal>;
+}
+
+function CustomerImportJobModal({ job: initialJob, onClose }: { job: CustomerImportDetail; onClose: () => void }) {
+  const [job, setJob] = useState<CustomerImportDetail>(initialJob);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [editing, setEditing] = useState<CustomerImportRow | null>(null);
+
+  async function reload() {
+    setLoading(true);
+    setError("");
+    try {
+      setJob(await endpoints.imports.getCustomerImport(job.id) as CustomerImportDetail);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to refresh import details");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function retry() {
+    setBusy(true);
+    setError("");
+    try {
+      await endpoints.imports.retryCustomers(job.id);
+      await reload();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to retry customer import");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const canRetry = job.rows.some(row => row.status === "pending") || job.failed_rows > 0;
+
+  return <Modal title="Review customer import" onClose={onClose}>
+    <div className="import-stats"><strong>{job.imported_rows} imported</strong><span>{job.failed_rows} failed of {job.total_rows} rows</span><Badge tone={importStatusTone(job.status)}>{job.status}</Badge></div>
+    <div className="import-job-summary"><span>Created {new Date(job.created_at).toLocaleString()}</span><span>Job ID <code>{job.id}</code></span></div>
+    {error && <div className="error-banner" role="alert">{error}</div>}
+    {loading ? <div className="center-load"><Spinner /></div> : job.rows.length ? <div className="table-wrap"><table><thead><tr><th>Row</th><th>Customer</th><th>Status</th><th>Issue</th><th /></tr></thead><tbody>
+      {job.rows.map(row => <tr key={row.id}>
+        <td>{row.row_number}</td><td><strong>{row.payload.name || "Unnamed"}</strong><span className="table-sub">{row.payload.email || row.payload.phone || "No contact"}</span></td>
+        <td><Badge tone={importStatusTone(row.status)}>{row.status}</Badge></td>
+        <td>{row.error_message || "—"}</td>
+        <td>{row.status !== "imported" && <button className="text-button" onClick={() => setEditing(row)}>Correct</button>}</td>
+      </tr>)}
+    </tbody></table></div> : <EmptyState title="No import rows" description="This job does not contain row details." />}
+    <div className="modal-actions">
+      <Button className="btn-secondary" onClick={() => void reload()} disabled={busy || loading}>Refresh</Button>
+      {canRetry && <Button onClick={() => void retry()} disabled={busy || loading}>{busy ? "Retrying…" : "Retry pending rows"}</Button>}
+    </div>
+    {editing && <CustomerImportRowModal jobId={job.id} row={editing} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); await reload(); }} />}
+  </Modal>;
+}
+
+function CustomerImportRowModal({ jobId, row, onClose, onSaved }: { jobId: string; row: CustomerImportRow; onClose: () => void; onSaved: () => Promise<void> }) {
+  const [form, setForm] = useState({
+    name: row.payload.name || "",
+    kind: row.payload.kind || "residential",
+    email: row.payload.email || "",
+    phone: row.payload.phone || "",
+    notes: row.payload.notes || "",
+  });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await endpoints.imports.updateCustomerImportRow(jobId, row.id, { name: form.name, kind: form.kind, email: form.email || null, phone: form.phone || null, notes: form.notes || null });
+      await onSaved();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to correct import row");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <Modal title={`Correct import row ${row.row_number}`} onClose={onClose}>
+    <form className="form-grid" onSubmit={submit}>
+      <label>Customer name<Input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} minLength={1} required /></label>
+      <label>Customer type<Select value={form.kind} onChange={event => setForm({ ...form, kind: event.target.value })}><option value="residential">Residential</option><option value="commercial">Commercial</option></Select></label>
+      <div className="form-two"><label>Email<Input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} /></label><label>Phone<Input value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} /></label></div>
+      <label>Notes<TextArea value={form.notes} onChange={event => setForm({ ...form, notes: event.target.value })} /></label>
+      {error && <div className="error-banner" role="alert">{error}</div>}
+      <Button disabled={busy}>{busy ? "Saving…" : "Save corrected row"}</Button>
+    </form>
+  </Modal>;
 }
