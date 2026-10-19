@@ -1,7 +1,7 @@
 export type Role = "owner" | "admin" | "manager" | "technician" | "billing" | "staff";
 export interface User { id:string; company_id:string; email:string; full_name:string; role:Role; is_active:boolean; }
 export interface Company { id:string; name:string; legal_name:string|null; timezone:string; currency:string; is_active:boolean; }
-export interface TokenPair { access_token:string; refresh_token:string; token_type:"bearer"; expires_in:number; }
+export interface AuthSession { authenticated: true; expires_in: number; }
 export interface Customer { id:string; company_id:string; customer_number:string; kind:"residential"|"commercial"; name:string; email:string|null; phone:string|null; status:"active"|"inactive"; notes:string|null; created_at:string; updated_at:string; }
 export interface ServiceLocation { id:string; customer_id:string; name:string; address_line1:string; address_line2:string|null; city:string; region:string|null; postal_code:string|null; country_code:string; access_instructions:string|null; is_active:boolean; }
 export interface Contact { id:string; customer_id:string; full_name:string; email:string|null; phone:string|null; is_billing_contact:boolean; }
