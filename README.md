@@ -44,3 +44,9 @@ curl --fail http://127.0.0.1:8080/healthz
 ```
 
 Add HTTPS at the reverse proxy or hosting platform; this container serves HTTP internally and should not be exposed directly to the public internet. `VITE_API_URL` is embedded in public JavaScript, so never put credentials or other secrets in it.
+
+## Application entry points
+
+- `/` is the public, responsive product landing page.
+- `/login`, `/register`, `/forgot-password`, and `/reset-password` are public account flows.
+- `/dashboard` and the customer, agreement, operations, billing, assets, reports, integrations and settings routes are protected by server-verified cookie sessions.
