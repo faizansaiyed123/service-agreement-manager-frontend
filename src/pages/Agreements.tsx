@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { endpoints } from "../lib/api";
 import type { Agreement, Customer, RenewalOffer, ServiceLocation } from "../types";
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, TextArea } from "../components/ui";
-import { Attachments } from "../components/Attachments";
 
 const money = (value: string, currency: string) => new Intl.NumberFormat(undefined, { style: "currency", currency }).format(Number(value));
 const tone = (status: Agreement["status"]) => status === "active" ? "success" : status === "suspended" || status === "proposed" ? "warning" : status === "cancelled" || status === "expired" ? "danger" : "info";
