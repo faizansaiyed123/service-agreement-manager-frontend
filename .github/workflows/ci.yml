@@ -13,7 +13,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: npm install --no-audit --no-fund
+      - run: npm install --no-fund
+      - name: Audit npm dependencies for known vulnerabilities
+        run: npm audit --audit-level=high
       - run: npm run build
       - name: Build production frontend image
         run: docker build --tag service-agreement-manager-frontend:ci .
