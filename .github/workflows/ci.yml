@@ -26,5 +26,7 @@ jobs:
             sleep 1
           done
           curl --fail http://127.0.0.1:8080/healthz
+          curl --fail --silent --head http://127.0.0.1:8080/ | grep -i "Content-Security-Policy"
+          curl --fail --silent --head http://127.0.0.1:8080/reset-password | grep -i "X-Content-Type-Options"
           curl --fail --silent --output /dev/null "http://127.0.0.1:8080/reset-password?token=ci-smoke-test"
           docker exec sam-frontend-ci nginx -t
