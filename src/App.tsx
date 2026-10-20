@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AppShell } from "./components/layout";
 import { endpoints } from "./lib/api";
+import { publicRegistrationEnabled } from "./lib/features";
 import { AuthPage } from "./pages/Auth";
 import { LandingPage } from "./pages/LandingPage";
 import { OverviewPage } from "./pages/Overview";
@@ -45,7 +46,6 @@ function Protected({ children }: { children: ReactNode }) {
     : <Navigate to="/login" replace state={{ from: location }} />;
 }
 
-const publicRegistrationEnabled = import.meta.env.DEV || import.meta.env.VITE_PUBLIC_REGISTRATION === "true";
 
 export default function App() {
   return (
