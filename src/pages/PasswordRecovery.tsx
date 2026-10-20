@@ -27,6 +27,47 @@ export function ForgotPasswordPage() {
   </div>;
 }
 
+export function VerifyEmailPage() {
+  const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("token") || "");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    // Remove the single-use verification secret from browser history immediately.
+    if (token && window.location.hash) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  }, [token]);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!token) {
+      setError("This verification link is missing its token. Return to signup to request a new link.");
+      return;
+    }
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await endpoints.auth.verifyEmail({ token });
+      setMessage("Email verified. Your workspace owner account is ready to sign in.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to verify email");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <div className="auth-layout">
+    <div className="auth-art"><div className="auth-brand"><span className="brand-mark">SA</span><strong>Service Agreement Manager</strong></div><div className="auth-copy"><span className="eyebrow">Email verification</span><h1>Confirm your email to activate your workspace.</h1><p>The verification link is single-use and expires automatically.</p></div></div>
+    <div className="auth-panel"><div className="auth-form-wrap"><span className="eyebrow">Confirm email</span><h2>Verify your email address</h2>
+      {!message && <form className="form-grid" onSubmit={submit}>{error && <div className="error-banner" role="alert">{error}</div>}<Button disabled={busy || !token}>{busy ? "Verifying…" : "Verify email"}</Button></form>}
+      {message && <div className="success-banner" role="status">{message}</div>}
+      {message && <div className="auth-switch"><Link to="/login">Sign in</Link></div>}
+      {!token && <div className="auth-switch"><Link to="/register">Back to registration</Link></div>}
+    </div></div>
+  </div>;
+}
+
 export function ResetPasswordPage() {
   const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("token") || "");
   useEffect(() => {
