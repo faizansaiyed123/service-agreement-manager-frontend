@@ -5,6 +5,7 @@ import { endpoints } from "../lib/api";
 import { Button, Input } from "../components/ui";
 
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
+  const publicRegistrationEnabled = import.meta.env.DEV || import.meta.env.VITE_PUBLIC_REGISTRATION === "true";
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ email: "", password: "", fullName: "", companyName: "" });
@@ -61,7 +62,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
             <Button type="submit" disabled={busy}>{busy ? "Working…" : mode === "login" ? "Sign in" : "Create workspace"}</Button>
           </form>
           <div className="auth-switch">
-            {mode === "login" ? <>Need a workspace? <Link to="/register">Create one</Link></> : <>Already have an account? <Link to="/login">Sign in</Link></>}
+            {mode === "login" ? (publicRegistrationEnabled ? <>Need a workspace? <Link to="/register">Create one</Link></> : <>Need access? Ask your workspace administrator to create your account.</>) : <>Already have an account? <Link to="/login">Sign in</Link></>}
           </div>
           {mode === "login" && <div className="auth-switch"><Link to="/forgot-password">Forgot your password?</Link></div>}
           <div className="auth-switch"><Link to="/">← Back to home</Link></div>
