@@ -13,16 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: npm install --no-fund
-      - name: Capture npm lockfile for a reproducible dependency install
-        run: |
-          node - <<'NODE'
-          const fs = require("node:fs");
-          const encoded = fs.readFileSync("package-lock.json").toString("base64");
-          console.log("NPM_LOCKFILE_BASE64_BEGIN");
-          for (let i = 0; i < encoded.length; i += 4000) console.log(encoded.slice(i, i + 4000));
-          console.log("NPM_LOCKFILE_BASE64_END");
-          NODE
+      - run: npm ci --no-audit --no-fund
       - name: Audit npm dependencies for known vulnerabilities
         run: npm audit --audit-level=high
       - run: npm run build
