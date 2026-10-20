@@ -2,10 +2,10 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { endpoints } from "../lib/api";
+import { publicRegistrationEnabled } from "../lib/features";
 import { Button, Input } from "../components/ui";
 
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
-  const publicRegistrationEnabled = import.meta.env.DEV || import.meta.env.VITE_PUBLIC_REGISTRATION === "true";
   const navigate = useNavigate();
   const location = useLocation();
   const [form, setForm] = useState({ email: "", password: "", fullName: "", companyName: "" });
