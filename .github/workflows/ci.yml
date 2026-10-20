@@ -13,7 +13,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
+      - name: Audit npm dependencies for known vulnerabilities
+        run: npm audit --audit-level=high
       - run: npm run build
       - name: Build production frontend image
         run: docker build --tag service-agreement-manager-frontend:ci .
@@ -26,5 +28,7 @@ jobs:
             sleep 1
           done
           curl --fail http://127.0.0.1:8080/healthz
+          curl --fail --silent --head http://127.0.0.1:8080/ | grep -i "Content-Security-Policy"
+          curl --fail --silent --head http://127.0.0.1:8080/reset-password | grep -i "X-Content-Type-Options"
           curl --fail --silent --output /dev/null "http://127.0.0.1:8080/reset-password?token=ci-smoke-test"
           docker exec sam-frontend-ci nginx -t
