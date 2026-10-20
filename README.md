@@ -25,7 +25,7 @@ The frontend uses the real FastAPI endpoints under `/api/v1` with server-set `Ht
 - Serve the app and API only over HTTPS in production.
 - Configure the static host to serve `index.html` for client-side routes (SPA fallback).
 - Verify the deployed browser can reach the API origin and that the backend `CORS_ORIGINS` contains the exact frontend origin when cross-origin requests are used.
-- Run `npm run build` in CI before deploying. This repository currently has no committed npm lockfile; generate and commit `package-lock.json` from a trusted development environment, then switch CI to `npm ci` and restore npm caching for reproducible builds.
+- Run `npm ci`, `npm audit --audit-level=high`, and `npm run build` before deploying. CI and the production Docker build use the checked-in `package-lock.json` to keep dependency resolution reproducible.
 
 
 ## Container deployment
