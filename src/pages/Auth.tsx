@@ -10,6 +10,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const location = useLocation();
   const [form, setForm] = useState({ email: "", password: "", fullName: "", companyName: "" });
   const [error, setError] = useState("");
+  const [registrationMessage, setRegistrationMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent) {
@@ -19,15 +20,20 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
     try {
       if (mode === "login") {
         await endpoints.auth.login({ email: form.email, password: form.password });
+        navigate(location.state?.from?.pathname || "/dashboard", { replace: true });
       } else {
-        await endpoints.auth.register({
+        const result = await endpoints.auth.register({
           email: form.email,
           password: form.password,
           full_name: form.fullName,
           company_name: form.companyName,
         });
+        if ("authenticated" in result) {
+          navigate("/dashboard", { replace: true });
+        } else {
+          setRegistrationMessage(result.message);
+        }
       }
-      navigate(location.state?.from?.pathname || "/dashboard", { replace: true });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to authenticate");
     } finally {
@@ -51,7 +57,25 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
           <span className="eyebrow">{mode === "login" ? "Welcome back" : "New workspace"}</span>
           <h2>{mode === "login" ? "Sign in" : "Create your company"}</h2>
           <p className="muted">{mode === "login" ? "Use your account to continue." : "Create the owner account and company together."}</p>
-          <form onSubmit={submit} className="form-grid">
+          {mode === "register" && registrationMessage ? (
+            <div className="form-grid">
+              <div className="success-banner" role="status">{registrationMessage}</div>
+              <p className="muted">Check your inbox and open the verification link to activate the workspace owner account.</p>
+              {error && <div className="error-banner" role="alert">{error}</div>}
+              <Button type="button" disabled={busy} onClick={async () => {
+                setBusy(true); setError("");
+                try {
+                  const result = await endpoints.auth.resendVerification({ email: form.email });
+                  setRegistrationMessage(result.message);
+                } catch (cause) {
+                  setError(cause instanceof Error ? cause.message : "Unable to resend verification");
+                } finally {
+                  setBusy(false);
+                }
+              }}>{busy ? "Sending…" : "Resend verification email"}</Button>
+              <div className="auth-switch"><Link to="/login">Back to sign in</Link></div>
+            </div>
+          ) : <form onSubmit={submit} className="form-grid">
             {mode === "register" && <>
               <label>Company name<Input value={form.companyName} onChange={event => setForm({ ...form, companyName: event.target.value })} minLength={2} required /></label>
               <label>Your name<Input value={form.fullName} onChange={event => setForm({ ...form, fullName: event.target.value })} minLength={2} required /></label>
@@ -60,7 +84,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
             <label>Password<Input type="password" value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={mode === "register" ? 12 : 1} required /></label>
             {error && <div className="error-banner" role="alert">{error}</div>}
             <Button type="submit" disabled={busy}>{busy ? "Working…" : mode === "login" ? "Sign in" : "Create workspace"}</Button>
-          </form>
+          </form>}
           <div className="auth-switch">
             {mode === "login" ? (publicRegistrationEnabled ? <>Need a workspace? <Link to="/register">Create one</Link></> : <>Need access? Ask your workspace administrator to create your account.</>) : <>Already have an account? <Link to="/login">Sign in</Link></>}
           </div>
