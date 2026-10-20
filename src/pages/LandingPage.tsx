@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { publicRegistrationEnabled } from "../lib/features";
 
 const capabilities = [
   {
@@ -47,7 +48,6 @@ const workflow = [
 ];
 
 export function LandingPage() {
-  const publicRegistrationEnabled = import.meta.env.DEV || import.meta.env.VITE_PUBLIC_REGISTRATION === "true";
   return (
     <div className="landing-page">
       <header className="landing-header">
