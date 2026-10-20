@@ -4,7 +4,9 @@ COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
 ARG VITE_API_URL=
+ARG VITE_PUBLIC_REGISTRATION=false
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_PUBLIC_REGISTRATION=${VITE_PUBLIC_REGISTRATION}
 RUN npm run build
 
 FROM nginx:1.28-alpine
