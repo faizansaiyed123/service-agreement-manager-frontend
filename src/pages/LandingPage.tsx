@@ -47,6 +47,7 @@ const workflow = [
 ];
 
 export function LandingPage() {
+  const publicRegistrationEnabled = import.meta.env.DEV || import.meta.env.VITE_PUBLIC_REGISTRATION === "true";
   return (
     <div className="landing-page">
       <header className="landing-header">
@@ -64,9 +65,9 @@ export function LandingPage() {
         </nav>
         <div className="landing-header-actions">
           <Link className="landing-signin" to="/login">Sign in</Link>
-          <Link className="landing-cta landing-cta-small" to="/register">
-            Create workspace <span aria-hidden="true">↗</span>
-          </Link>
+          {publicRegistrationEnabled
+            ? <Link className="landing-cta landing-cta-small" to="/register">Create workspace <span aria-hidden="true">↗</span></Link>
+            : <Link className="landing-cta landing-cta-small" to="/login">Workspace sign in <span aria-hidden="true">↗</span></Link>}
         </div>
       </header>
 
@@ -80,7 +81,9 @@ export function LandingPage() {
               field operations and billing into one clear workspace.
             </p>
             <div className="landing-hero-actions">
-              <Link className="landing-cta" to="/register">Create your workspace <span aria-hidden="true">↗</span></Link>
+              {publicRegistrationEnabled
+                ? <Link className="landing-cta" to="/register">Create your workspace <span aria-hidden="true">↗</span></Link>
+                : <Link className="landing-cta" to="/login">Sign in to your workspace <span aria-hidden="true">↗</span></Link>}
               <a className="landing-secondary-link" href="#platform">Explore the platform <span aria-hidden="true">↓</span></a>
             </div>
             <div className="landing-trust-points">
@@ -182,7 +185,9 @@ export function LandingPage() {
 
         <section className="landing-final-cta">
           <div><span className="landing-cta-eyebrow">READY FOR A CLEARER WORKFLOW?</span><h2>Bring the service lifecycle together.</h2><p>Start with your customers and build a more connected service operation from there.</p></div>
-          <Link className="landing-cta landing-cta-light" to="/register">Create your workspace <span aria-hidden="true">↗</span></Link>
+          {publicRegistrationEnabled
+            ? <Link className="landing-cta landing-cta-light" to="/register">Create your workspace <span aria-hidden="true">↗</span></Link>
+            : <Link className="landing-cta landing-cta-light" to="/login">Sign in to your workspace <span aria-hidden="true">↗</span></Link>}
         </section>
       </main>
 
@@ -192,7 +197,7 @@ export function LandingPage() {
           <span className="landing-brand-copy"><strong>Service Agreement</strong><small>MANAGER</small></span>
         </Link>
         <p>One workspace for the service relationship, from agreement to invoice.</p>
-        <div><Link to="/login">Sign in</Link><Link to="/register">Create workspace</Link><span>© {new Date().getFullYear()} Service Agreement Manager</span></div>
+        <div><Link to="/login">Sign in</Link>{publicRegistrationEnabled && <Link to="/register">Create workspace</Link>}<span>© {new Date().getFullYear()} Service Agreement Manager</span></div>
       </footer>
     </div>
   );
