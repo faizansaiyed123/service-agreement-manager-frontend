@@ -1,4 +1,4 @@
-import type { Agreement, Branch, Company, Contact, Customer, Equipment, Invoice, RenewalOffer, ServiceCatalogItem, ServiceLocation, AuthSession, User, WorkOrder } from "../types";
+import type { Agreement, Branch, Company, Contact, Customer, Equipment, Invoice, RenewalOffer, ServiceCatalogItem, ServiceLocation, AuthSession, RegistrationPending, User, WorkOrder } from "../types";
 
 const API_URL = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8000" : "")).replace(/\/$/, "");
 const PREFIX = "/api/v1";
@@ -11,6 +11,8 @@ const NO_REFRESH_RETRY = new Set([
   "/auth/forgot-password",
   "/auth/reset-password",
   "/auth/change-password",
+  "/auth/verify-email",
+  "/auth/resend-verification",
 ]);
 
 async function refreshSession(): Promise<boolean> {
@@ -75,8 +77,10 @@ export async function apiBlob(path: string, retry = true): Promise<Blob> {
 
 export const endpoints = {
   auth: {
-    register: (b: unknown) => api<AuthSession>("/auth/register", { method: "POST", body: JSON.stringify(b) }),
+    register: (b: unknown) => api<AuthSession | RegistrationPending>("/auth/register", { method: "POST", body: JSON.stringify(b) }),
     login: (b: unknown) => api<AuthSession>("/auth/login", { method: "POST", body: JSON.stringify(b) }),
+    verifyEmail: (b: unknown) => api<void>("/auth/verify-email", { method: "POST", body: JSON.stringify(b) }),
+    resendVerification: (b: unknown) => api<RegistrationPending>("/auth/resend-verification", { method: "POST", body: JSON.stringify(b) }),
     me: () => api<User>("/auth/me"),
     logout: () => api<void>("/auth/logout", { method: "POST" }),
     changePassword: (b: unknown) => api<void>("/auth/change-password", { method: "POST", body: JSON.stringify(b) }),

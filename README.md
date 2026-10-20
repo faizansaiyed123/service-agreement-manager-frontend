@@ -48,5 +48,5 @@ Add HTTPS at the reverse proxy or hosting platform; this container serves HTTP i
 ## Application entry points
 
 - `/` is the public, responsive product landing page.
-- `/login`, `/register`, `/forgot-password`, and `/reset-password` are public account flows.
+- `/login`, `/register`, `/forgot-password`, `/reset-password`, and `/verify-email` are public account flows. Production registration sends a single-use verification link; the mailbox owner sets the final password after opening it. The frontend enables this flow by default in production images, while `VITE_PUBLIC_REGISTRATION=false` can hide it.
 - `/dashboard` and the customer, agreement, operations, billing, assets, reports, integrations and settings routes are protected by server-verified cookie sessions.

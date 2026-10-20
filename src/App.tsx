@@ -13,7 +13,7 @@ import { InvoicesPage } from "./pages/Invoices";
 import { CatalogPage, EquipmentPage } from "./pages/Assets";
 import { SettingsPage } from "./pages/Settings";
 import { ReportsPage } from "./pages/Reports";
-import { ForgotPasswordPage, ResetPasswordPage } from "./pages/PasswordRecovery";
+import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from "./pages/PasswordRecovery";
 import { IntegrationsPage } from "./pages/Integrations";
 
 function Protected({ children }: { children: ReactNode }) {
@@ -45,14 +45,17 @@ function Protected({ children }: { children: ReactNode }) {
     : <Navigate to="/login" replace state={{ from: location }} />;
 }
 
+const publicRegistrationEnabled = import.meta.env.DEV || import.meta.env.VITE_PUBLIC_REGISTRATION === "true";
+
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<AuthPage mode="login" />} />
-      <Route path="/register" element={<AuthPage mode="register" />} />
+      <Route path="/register" element={publicRegistrationEnabled ? <AuthPage mode="register" /> : <Navigate to="/login" replace />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
 
       <Route element={<Protected><AppShell /></Protected>}>
         <Route path="dashboard" element={<OverviewPage />} />
