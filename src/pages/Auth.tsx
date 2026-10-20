@@ -60,7 +60,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
           {mode === "register" && registrationMessage ? (
             <div className="form-grid">
               <div className="success-banner" role="status">{registrationMessage}</div>
-              <p className="muted">Check your inbox and open the verification link to activate the workspace owner account.</p>
+              <p className="muted">If this address can be registered, a verification email will be sent. Open the link and choose your final password. If no email arrives, return to sign in or use password recovery.</p>
               {error && <div className="error-banner" role="alert">{error}</div>}
               <Button type="button" disabled={busy} onClick={async () => {
                 setBusy(true); setError("");
