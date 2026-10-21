@@ -127,7 +127,7 @@ function RecurringPanel({ schedules, onChanged }: { schedules: RecurringSchedule
   const [open, setOpen] = useState(false);
   async function toggle(item: RecurringSchedule) {
     try { const updated = await endpoints.recurring.action(item.id, item.is_active ? "pause" : "resume") as RecurringSchedule; onChanged(schedules.map(current => current.id === item.id ? updated : current)); }
-    catch {  }
+    catch {}
   }
   return <div><div className="page-actions settings-action"><Button onClick={() => setOpen(true)}>Add recurring schedule</Button></div><Card>{schedules.length ? <div className="table-wrap"><table><thead><tr><th>Schedule</th><th>Frequency</th><th>Next invoice</th><th>Auto issue</th><th>Status</th><th /></tr></thead><tbody>
     {schedules.map(item => <tr key={item.id}><td><strong>{item.name}</strong><span className="table-sub">{item.last_run_error || "Recurring invoice template"}</span></td><td className="capitalize">{item.frequency.replace("_", " ")}</td><td>{item.next_invoice_date}</td><td>{item.auto_issue ? "Yes" : "No"}</td><td><Badge tone={item.is_active ? "success" : "neutral"}>{item.is_active ? "Active" : "Paused"}</Badge></td><td><button className="text-button" onClick={() => void toggle(item)}>{item.is_active ? "Pause" : "Resume"}</button></td></tr>)}
