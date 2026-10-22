@@ -141,13 +141,25 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByRole('button', { name: 'Save acceptance', exact: true }).click();
   const acceptedResponse = await acceptPromise;
   expect(acceptedResponse.status()).toBe(200);
-  expect((await acceptedResponse.json()).status).toBe('accepted');
+  expect((await acceptedResponse.json()).status).toBe('active');
+  await expect(page.getByLabel('Accepted by')).toHaveCount(0);
 
-  const activatePromise = page.waitForResponse(response =>
-    response.url() === API + '/api/v1/agreements/' + agreement.id + '/activate' &&
+  // Agreements effective today activate when accepted; verify subsequent suspend/resume transitions.
+  const suspendPromise = page.waitForResponse(response =>
+    response.url() === API + '/api/v1/agreements/' + agreement.id + '/suspend' &&
     response.request().method() === 'POST');
-  await page.getByRole('button', { name: 'Activate', exact: true }).click();
-  const activeResponse = await activatePromise;
+  await page.getByRole('button', { name: 'Suspend', exact: true }).click();
+  await page.getByLabel('Reason').fill('Suspend and resume lifecycle verification');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  const suspendedResponse = await suspendPromise;
+  expect(suspendedResponse.status()).toBe(200);
+  expect((await suspendedResponse.json()).status).toBe('suspended');
+
+  const resumePromise = page.waitForResponse(response =>
+    response.url() === API + '/api/v1/agreements/' + agreement.id + '/resume' &&
+    response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Resume', exact: true }).click();
+  const activeResponse = await resumePromise;
   expect(activeResponse.status()).toBe(200);
   expect((await activeResponse.json()).status).toBe('active');
   const persistedAgreement = await readApiFromBrowser(page, '/agreements/' + agreement.id);
