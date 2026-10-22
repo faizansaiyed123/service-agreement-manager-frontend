@@ -1,10 +1,14 @@
 {
-  "tested_source_commit": "f922945bc3e5ab0c78655faa243af3bca34b4042",
-  "workflow_run_id": 39757382869,
-  "workflow_run_url": "https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39757382869",
+  "tested_source_commit": "d8fe77a674df221eb5d291fb35fcb9cad8ee2a41",
+  "workflow_run_id": 39758431771,
+  "workflow_run_url": "https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39758431771",
   "browser": "Chromium / Playwright",
   "viewport": "1280x720 (homepage screenshot is full page)",
-  "successful_screenshot_count": 18,
+  "successful_screenshot_count": 21,
+  "backend_test_count": 75,
+  "backend_test_passed": 73,
+  "backend_test_failures_or_errors": 0,
+  "backend_test_skipped": 2,
   "historical_failure_screenshot_included": true,
   "successful_screenshots": [
     "01-public-homepage.png",
@@ -24,6 +28,9 @@
     "15-email-queued.png",
     "16-sms-provider-disabled.png",
     "17-branch-hours-and-closures.png",
-    "18-maintenance-plan-generation.png"
+    "18-maintenance-plan-generation.png",
+    "19-invoice-partially-paid.png",
+    "20-integrations-webhooks.png",
+    "21-session-after-logout.png"
   ]
 }

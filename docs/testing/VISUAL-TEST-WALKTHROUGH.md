@@ -2,8 +2,8 @@
 
 > Curated screenshots from verified browser states. The regression image is historical failure evidence and is deliberately not counted as a successful checkpoint.
 
-**Tested source commit:** [`f922945bc3e5ab0c78655faa243af3bca34b4042`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/f922945bc3e5ab0c78655faa243af3bca34b4042)  
-**CI workflow:** [Run #39757382869](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39757382869)  
+**Tested source commit:** [`d8fe77a674df221eb5d291fb35fcb9cad8ee2a41`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/d8fe77a674df221eb5d291fb35fcb9cad8ee2a41)  
+**CI workflow:** [Run #39758431771](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39758431771)  
 **Browser:** Chromium controlled by Playwright  
 **Application build:** Vite production build served locally against the FastAPI backend on `main`  
 **Database:** Disposable PostgreSQL 16  
@@ -13,7 +13,9 @@
 
 This report follows Sayphora's screenshot layout: journeys are ordered, images are displayed in aligned two-column HTML tables, and each screenshot has a caption describing the action and assertion. Images are captured only after checkpoint assertions succeed, except the separately labelled historical regression reproduction.
 
-**Latest automated result:** 3 Playwright tests passed, 0 failed, 0 skipped. There are 18 successful screenshot checkpoints. These checks provide broad integration evidence, **not a claim that every LedgerPulse feature or every edge case has been tested**.
+**Latest automated result:** 4 Playwright tests passed, 0 failed, 0 skipped. There are 21 successful screenshot checkpoints. These checks provide broad integration evidence, **not a claim that every LedgerPulse feature or every edge case has been tested**.
+
+**Backend verification:** 73 tests passed, 0 failures/errors, 2 skipped across the backend test suite. The QA workflow also runs Ruff and an Alembic schema-consistency check.
 
 ## Regression evidence — before and after the fix
 
@@ -63,22 +65,35 @@ The original before-fix screenshot is embedded below and clearly marked as a fai
 
 <table><tbody><tr><td width="50%" valign="top"><h3>17. Branch hours and closures</h3><a href="visuals/17-branch-hours-and-closures.png"><img src="visuals/17-branch-hours-and-closures.png" alt="Branch operating hours and closure date" width="100%"/></a><p>A branch is created, Monday is updated to 08:00–17:00, persisted hours are checked, and a closure record is created.</p><p><em>Viewport: 1280 × 720</em></p></td><td width="50%" valign="top"></td></tr></tbody></table>
 
+### Extended finance, integrations and session security
+
+<table><tbody>
+<tr>
+<td width="50%" valign="top"><h3>19. Invoice partial payment and reconciliation</h3><a href="visuals/19-invoice-partially-paid.png"><img src="visuals/19-invoice-partially-paid.png" alt="Invoice visible in the app during partial payment state" width="100%"/></a><p>A $100 invoice is issued and a $30 payment leaves a persisted partial balance. The same idempotency key replays the original payment; changed-content reuse and overpayment are rejected. The full API sequence then settles, refunds and credits the invoice.</p><p><em>Viewport: 1280 × 720</em></p></td>
+<td width="50%" valign="top"><h3>20. Integrations / webhook administration</h3><a href="visuals/20-integrations-webhooks.png"><img src="visuals/20-integrations-webhooks.png" alt="Integrations page after webhook endpoint verification" width="100%"/></a><p>The integrations route renders without a browser error. In the same journey the API rejects an insecure HTTP endpoint, creates a valid HTTPS endpoint, omits its secret from list responses, rotates the secret and enforces tenant isolation/deactivation. This does not represent a live delivery to an external webhook.</p><p><em>Viewport: 1280 × 720</em></p></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><h3>21. Session cleared after logout</h3><a href="visuals/21-session-after-logout.png"><img src="visuals/21-session-after-logout.png" alt="Login screen after the browser session is revoked" width="100%"/></a><p>The cookie-authenticated refresh flow succeeds before logout. Logout returns 204, the authenticated identity endpoint then returns 401, and reopening the protected dashboard routes back to login. Password-recovery responses for known and unknown addresses are also checked for indistinguishable public messages.</p><p><em>Viewport: 1280 × 720</em></p></td>
+<td width="50%" valign="top"></td>
+</tr>
+</tbody></table>
+
 ## Feature coverage inventory
 
 | Feature area | Coverage status | What was actually verified |
 |---|---|---|
-| Registration / invalid login | **Partial pass** | Synthetic owner registration and one invalid-login error. Password reset, verification, logout, session refresh/expiry are not tested. |
+| Registration / sessions / recovery | **Partial pass — extended** | UI registration, cookie-authenticated `/auth/me`, refresh-cookie rotation, logout/revocation, protected-route redirect, password-reset anti-enumeration and invalid reset-token rejection. Valid email verification/reset depends on one-time tokens delivered through the outbox and is covered by the backend test suite; real mailbox delivery is not exercised. |
 | Customers / contacts / locations | **Partial pass** | Customer, billing-contact, location creation and CSV import/recovery. Edit/deactivate/search/pagination, attachments and all validations are not tested. |
 | Agreements | **Partial pass** | Draft → proposed → effective-today active → suspend/resume; modal defect reproduced/fixed. Cancel, renewals, expiry, future-start acceptance and all invalid transitions are not tested. |
-| Invoices / payments | **Partial pass** | Draft → issue → full payment → paid with zero balance. Partial payments, discounts/tax, credits, refunds, voids, overpayment and idempotency are not tested. |
+| Invoices / payments | **Partial pass — extended** | Draft/issue/full payment in the UI journey; extended browser-origin API flow covers partial payment, replayed idempotency key, changed-payload conflict, overpayment rejection, full settlement, refund, credit, void transition and PDF response. Tax/discount combinations, provider payment gateways and all race conditions are not all exercised. |
 | Equipment / service catalogue | **Partial pass** | One equipment record and one service item created and persisted. Update, deactivate/decommission, delete and filter paths are not tested. |
 | Work orders / technician access | **Partial pass** | Create → assign → start → complete using owner session and synthetic technician. Technician self-login, edit/cancel, appointment validation and checklist enforcement are not tested. |
 | Maintenance plans | **Partial pass** | Plan created, order generated and repeated occurrence is idempotent. Schedule editing/deactivation and due-date/checklist edge cases are not tested. |
 | Branches | **Partial pass** | Branch creation, Monday hours and closure creation. Duplicate codes, invalid timezones, closure deletion and primary-branch changes are not tested. |
 | Recurring invoices | **Partial pass** | Create, pause and resume. Background scheduler and automatic invoice creation are not tested. |
 | Reports / CSV | **Partial pass** | Four CSV exports and their contents; import duplicate recovery. All filters, pagination boundaries and formula-injection cases are not tested. |
-| Email / SMS | **Partial pass** | Email outbox queue persistence and provider-disabled SMS error. Delivery workers, retries, SMTP inbox delivery and provider-enabled SMS are not tested. |
-| Webhooks / attachments | **Not tested end to end** | Webhook CRUD, signatures, rotation, delivery/retry and attachment upload/download/delete are not in this browser journey. |
+| Email / SMS | **Partial pass** | Email outbox queue persistence and provider-disabled SMS error; backend suite checks queue/business rules. Live SMTP inbox delivery and provider-enabled SMS are not tested. |
+| Webhooks / attachments | **Partial pass — extended** | Browser-origin API flow verifies attachment upload/list/update/download checksum/delete and tenant isolation; webhook HTTPS-only validation, CRUD, secret redaction/rotation, tenant isolation and deactivation. Backend tests cover webhook signature/retry worker behavior. A live external webhook receiver and production object storage are not exercised. |
 | Authorization / security | **Partial pass** | Cross-tenant customer lookup returns 404; untrusted Origin returns 403. Full RBAC matrix, rate limits and all tenant-scoped endpoints are not tested. |
 | Hosted production | **Not tested** | The suite used a local production build, local API and disposable PostgreSQL, not the hosted domain. |
 

@@ -1,10 +1,11 @@
 # LedgerPulse — CI End-to-End Test Report
 
 **Result:** PASS for the listed isolated browser/API journeys  
-**Tested source commit:** [`f922945bc3e5ab0c78655faa243af3bca34b4042`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/f922945bc3e5ab0c78655faa243af3bca34b4042)  
-**CI run:** [Run #39757382869](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39757382869)  
-**Browser tests:** 3 passed, 0 failed, 0 skipped  
-**Successful visual checkpoints:** 18
+**Tested source commit:** [`d8fe77a674df221eb5d291fb35fcb9cad8ee2a41`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/d8fe77a674df221eb5d291fb35fcb9cad8ee2a41)  
+**CI run:** [Run #39758431771](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39758431771)  
+**Browser tests:** 4 passed, 0 failed, 0 skipped  
+**Successful visual checkpoints:** 21  
+**Backend tests:** 73 passed, 0 failures/errors, 2 skipped
 
 ## Confirmed in this run
 
@@ -12,6 +13,8 @@
 |---|---|
 | Backend migrations against fresh PostgreSQL 16 | PASS |
 | Backend readiness endpoint | PASS |
+| Alembic schema consistency (`alembic check`) | PASS |
+| Backend quality/tests (`ruff check .`, full `pytest` suite) | PASS — 73 passed, 0 failures/errors, 2 skipped |
 | Frontend production build and preview | PASS |
 | Browser-to-API journey | PASS — customer, agreement, invoice/payment, assets/catalogue, work order, recurring schedule, CSV import/export, email outbox, maintenance and branch workflows |
 | Tenant isolation / untrusted Origin | PASS — tested customer isolation path and CORS-origin rejection |
@@ -21,7 +24,7 @@
 
 This is broad but bounded end-to-end coverage, not a test of every LedgerPulse feature, role, validation branch or production scenario. The [visual walkthrough](VISUAL-TEST-WALKTHROUGH.md) contains a feature-by-feature coverage inventory and explicitly labels partial and untested areas.
 
-Not yet tested end to end include webhook lifecycle/delivery and secret rotation, attachment upload/download, password reset/email verification/logout/session expiry, invoice partial payments/refunds/credits/voids, the complete RBAC matrix, recurring scheduler execution, provider-enabled SMS, live SMTP delivery and hosted production.
+Coverage was extended with browser-origin API flows for attachment upload/download/checksum/delete and tenant isolation; webhook endpoint validation/secret redaction/rotation/deactivation/tenant isolation; cookie refresh/logout revocation; password-reset response anti-enumeration; and invoice partial payments, idempotent replay/conflicts, overpayment rejection, refunds, credits, voiding and PDF generation. Backend pytest also covers the backend's broader role, token, webhook-signing/retry and business-rule tests. Still not fully verified are every role/resource combination, every validation/expiry/race edge, actual automatic recurring invoice generation, live SMTP/SMS/webhook provider delivery, production object storage and hosted production integration.
 
 The live deployment was not verified: Vercel inspection was blocked by deployment protection and no linked Render backend service was found in the connected workspace. Tests use a local production-built frontend, the backend repository's `main` branch and disposable PostgreSQL 16.
 
