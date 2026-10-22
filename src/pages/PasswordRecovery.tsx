@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { endpoints } from "../lib/api";
 import { Button, Input } from "../components/ui";
@@ -35,7 +35,7 @@ export function VerifyEmailPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Remove the single-use verification secret from browser history immediately.
     if (token && window.location.hash) {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
@@ -86,7 +86,7 @@ export function VerifyEmailPage() {
 
 export function ResetPasswordPage() {
   const [token] = useState(() => new URLSearchParams(window.location.hash.slice(1)).get("token") || "");
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Remove the single-use secret from the address bar and browser history immediately.
     if (token && window.location.hash) {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
