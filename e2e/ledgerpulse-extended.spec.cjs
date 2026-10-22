@@ -41,7 +41,7 @@ async function capture(page, name) {
   await page.screenshot({ path: target, fullPage: true, animations: 'disabled' });
 }
 
-test('LedgerPulse extended journey verifies session security, attachments, webhooks and finance edge cases', async ({ page, request }) => {
+test('Service Agreement Manager account security, attachments, webhooks and finance journey', async ({ page, request }) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   const unique = String(Date.now());
@@ -50,7 +50,7 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
 
   // Create a browser-cookie session rather than relying on a bearer token in the UI.
   await page.goto('/register');
-  await page.getByLabel('Company name').fill('LedgerPulse Extended QA ' + unique);
+  await page.getByLabel('Company name').fill('Northstar Facility Services ' + unique);
   await page.getByLabel('Your name').fill('Morgan Ellis');
   await page.getByLabel('Email').fill(ownerEmail);
   await page.getByLabel('Password').fill(password);
@@ -123,7 +123,7 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   expect(customerResponse.status).toBe(201);
   const customer = customerResponse.body;
 
-  const fileContent = 'LedgerPulse test attachment ' + unique;
+  const fileContent = 'Northstar test attachment ' + unique;
   const expectedSha256 = createHash('sha256').update(fileContent).digest('hex');
   const upload = await page.evaluate(async ({ api, customerId, content }) => {
     const form = new FormData();
@@ -169,9 +169,9 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   // Use an independent tenant to prove that attachment and webhook IDs cannot cross company boundaries.
   const secondOwnerResponse = await request.post(API + '/api/v1/auth/register', {
     data: {
-      company_name: 'LedgerPulse Second Tenant ' + unique,
+      company_name: 'Bluewater Service Group ' + unique,
       full_name: 'Isolated Tenant Owner',
-      email: 'ledgerpulse-tenant-' + unique + '@example.com',
+      email: 'bluewater-tenant-' + unique + '@example.com',
       password: 'LedgerPulse-Second-Tenant!2026',
     },
   });
