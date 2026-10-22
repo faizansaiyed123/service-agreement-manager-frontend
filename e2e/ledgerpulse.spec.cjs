@@ -224,7 +224,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   expect(persistedInvoice.status).toBe(200);
   expect(persistedInvoice.body.status).toBe('paid');
   expect(Number(persistedInvoice.body.balance_due)).toBe(0);
-  await expect(page.getByText('paid', { exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog').last().getByText('paid', { exact: true })).toBeVisible();
   await capture(page, '08-invoice-paid.png');
 
   // Equipment and catalog creation.
