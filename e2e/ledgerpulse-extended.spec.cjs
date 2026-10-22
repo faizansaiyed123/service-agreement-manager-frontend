@@ -305,28 +305,41 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   await expect(page.getByText(invoice.invoice_number, { exact: true })).toBeVisible();
   await capture(page, '19-invoice-partially-paid.png');
 
-  const finalPayment = await browserApi(page, 'POST', '/invoices/' + invoice.id + '/payments', {
-    amount: '70.00',
-    payment_method: 'bank_transfer',
-    reference: 'QA-FINAL-' + unique,
-  }, { 'Idempotency-Key': 'pay-final-' + unique });
-  expect(finalPayment.status).toBe(201);
-  expect((await browserApi(page, 'GET', '/invoices/' + invoice.id)).body.status).toBe('paid');
+  // Complete the invoice using the visible UI, not only the API helper.
+  await page.locator('button.table-link').filter({ hasText: invoice.invoice_number }).click();
+  let invoiceDialog = page.getByRole('dialog').last();
+  await expect(invoiceDialog).toContainText(invoice.invoice_number);
+  await invoiceDialog.getByRole('button', { name: 'Record payment', exact: true }).click();
+  const paymentDialog = page.getByRole('dialog').last();
+  await paymentDialog.getByLabel('Amount').fill('70.00');
+  await paymentDialog.getByLabel('Reference').fill('QA-UI-FINAL-' + unique);
+  await paymentDialog.getByRole('button', { name: 'Record payment', exact: true }).click();
+  await expect.poll(async () => (await browserApi(page, 'GET', '/invoices/' + invoice.id)).body.status).toBe('paid');
 
+  // Refund a small amount through the UI, explicitly selecting the original $30 payment.
+  invoiceDialog = page.getByRole('dialog').last();
+  await invoiceDialog.getByRole('button', { name: 'Refund payment', exact: true }).click();
+  const refundDialog = page.getByRole('dialog').last();
+  await refundDialog.getByLabel('Payment').selectOption(partialPayment.body.id);
+  await refundDialog.getByLabel('Amount').fill('5.00');
+  await refundDialog.getByLabel('Reason').fill('UI refund regression check');
+  await refundDialog.getByRole('button', { name: 'Refund payment', exact: true }).click();
+  await expect.poll(async () => Number((await browserApi(page, 'GET', '/invoices/' + invoice.id)).body.balance_due)).toBe(5);
+
+  // Repeat a second refund through the API to verify idempotency and reject an over-refund.
+  const refundRoute = '/invoices/' + invoice.id + '/payments/' + partialPayment.body.id + '/refunds';
   const refundPayload = {
-    amount: '10.00',
+    amount: '5.00',
     refund_method: 'bank_transfer',
     reference: 'QA-REFUND-' + unique,
-    reason: 'Verify refund reconciliation in E2E',
+    reason: 'Verify refund idempotency in E2E',
   };
-  const refundRoute = '/invoices/' + invoice.id + '/payments/' + partialPayment.body.id + '/refunds';
   const refundKey = 'refund-' + unique;
   const refund = await browserApi(page, 'POST', refundRoute, refundPayload, { 'Idempotency-Key': refundKey });
   expect(refund.status).toBe(201);
   const refundReplay = await browserApi(page, 'POST', refundRoute, refundPayload, { 'Idempotency-Key': refundKey });
   expect(refundReplay.status).toBe(200);
   expect(refundReplay.body.id).toBe(refund.body.id);
-
   const excessRefund = await browserApi(page, 'POST', refundRoute, {
     ...refundPayload,
     amount: '21.00',
@@ -334,7 +347,22 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   expect(excessRefund.status).toBe(409);
   expect(excessRefund.body.error.code).toBe('refund_exceeds_payment');
 
-  const creditPayload = { amount: '10.00', reason: 'Offset the test refund balance' };
+  const excessiveCredit = await browserApi(page, 'POST', '/invoices/' + invoice.id + '/credits', {
+    amount: '11.00', reason: 'Deliberately exceeds remaining invoice balance',
+  }, { 'Idempotency-Key': 'credit-excess-' + unique });
+  expect(excessiveCredit.status).toBe(409);
+  expect(excessiveCredit.body.error.code).toBe('credit_exceeds_balance');
+
+  // Apply a credit through the UI and a second credit through the API to test idempotent replay.
+  invoiceDialog = page.getByRole('dialog').last();
+  await invoiceDialog.getByRole('button', { name: 'Add credit', exact: true }).click();
+  const creditDialog = page.getByRole('dialog').last();
+  await creditDialog.getByLabel('Amount').fill('5.00');
+  await creditDialog.getByLabel('Reason').fill('UI credit regression check');
+  await creditDialog.getByRole('button', { name: 'Apply credit', exact: true }).click();
+  await expect.poll(async () => Number((await browserApi(page, 'GET', '/invoices/' + invoice.id)).body.balance_due)).toBe(5);
+
+  const creditPayload = { amount: '5.00', reason: 'Verify credit idempotency in E2E' };
   const creditKey = 'credit-' + unique;
   const credit = await browserApi(page, 'POST', '/invoices/' + invoice.id + '/credits',
     creditPayload, { 'Idempotency-Key': creditKey });
@@ -346,7 +374,16 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   const reconciledInvoice = await browserApi(page, 'GET', '/invoices/' + invoice.id);
   expect(reconciledInvoice.status).toBe(200);
   expect(Number(reconciledInvoice.body.balance_due)).toBe(0);
+  expect(Number(reconciledInvoice.body.amount_refunded)).toBe(10);
+  expect(Number(reconciledInvoice.body.credits_applied)).toBe(10);
   expect(reconciledInvoice.body.status).toBe('paid');
+
+  // Leave visible evidence of payment, refund and credit history in the invoice details UI.
+  invoiceDialog = page.getByRole('dialog').last();
+  await invoiceDialog.getByRole('button', { name: 'Payments & activity', exact: true }).click();
+  await expect(invoiceDialog.getByText('UI refund regression check')).toBeVisible();
+  await expect(invoiceDialog.getByText('UI credit regression check')).toBeVisible();
+  await capture(page, '25-invoice-adjustments-ui.png');
 
   // PDF generation and the invalid void -> issue transition.
   const pdf = await page.evaluate(async ({ api, id }) => {
