@@ -83,6 +83,20 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   expect(customer.status).toBe('active');
   await expect(page.getByRole('dialog').last()).toContainText(customerName);
 
+  await page.getByRole('button', { name: /Contacts/ }).click();
+  await page.getByRole('button', { name: 'Add contact', exact: true }).click();
+  const contactName = 'E2E Billing Contact ' + unique;
+  await page.getByRole('dialog').last().getByLabel('Full name').fill(contactName);
+  await page.getByRole('dialog').last().getByLabel('Email').fill('billing-' + unique + '@example.com');
+  await page.getByRole('dialog').last().getByLabel('Phone').fill('5550101');
+  await page.getByRole('dialog').last().getByLabel('Billing contact').check();
+  const contactPromise = page.waitForResponse(response => response.url() === API + '/api/v1/customers/' + customer.id + '/contacts' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Add contact', exact: true }).last().click();
+  const contactResponse = await contactPromise;
+  expect(contactResponse.status()).toBe(201);
+  expect((await contactResponse.json()).full_name).toBe(contactName);
+  await expect(page.getByRole('dialog').last()).toContainText(contactName);
+
   await page.getByRole('button', { name: /Locations/ }).click();
   await page.getByRole('button', { name: 'Add location', exact: true }).click();
   await page.getByLabel('Location name').fill(locationName);
@@ -382,6 +396,55 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   expect(orderDownload.suggestedFilename()).toBe('work-orders.csv');
   expect(await fs.readFile(await orderDownload.path(), 'utf8')).toContain(workOrderTitle);
   await capture(page, '13-reports-and-csv-exports.png');
+
+  // CSV import path includes preview validation, partial success, row correction and retry.
+  await page.goto('/customers');
+  await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
+  const importedName = 'CSV Import Customer ' + unique;
+  const importCsv = 'name,kind,email,phone,notes\n' +
+    importedName + ',commercial,csv-' + unique + '@example.com,5550101,Imported by E2E\n' +
+    'Duplicate Import Customer ' + unique + ',commercial,dup-' + unique + '@example.com,5550102,First duplicate\n' +
+    'Duplicate Import Customer ' + unique + ',commercial,dup-' + unique + '@example.com,5550103,Duplicate row';
+  const previewPromise = page.waitForResponse(response => response.url() === API + '/api/v1/customers/imports/preview' && response.request().method() === 'POST');
+  await page.locator('input[type=file]').setInputFiles({ name: 'ledgerpulse-customers.csv', mimeType: 'text/csv', buffer: Buffer.from(importCsv) });
+  const previewResponse = await previewPromise;
+  expect(previewResponse.status()).toBe(200);
+  const previewBody = await previewResponse.json();
+  expect(previewBody.total_rows).toBe(3);
+  expect(previewBody.valid_rows).toBe(2);
+  expect(previewBody.invalid_rows).toBe(1);
+  await expect(page.getByText('2 valid', { exact: true })).toBeVisible();
+  const importPromise = page.waitForResponse(response => response.url() === API + '/api/v1/customers/imports' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Import valid customers', exact: true }).click();
+  const importResponse = await importPromise;
+  expect(importResponse.status()).toBe(201);
+  const importJob = await importResponse.json();
+  expect(importJob.total_rows).toBe(3);
+  expect(importJob.imported_rows).toBe(2);
+  expect(importJob.failed_rows).toBe(1);
+  expect(importJob.status).toBe('partial');
+  await expect(page.getByText(importedName, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Import history', exact: true }).click();
+  const importRow = page.getByRole('row').filter({ hasText: 'partial' });
+  await importRow.getByRole('button', { name: 'Review', exact: true }).click();
+  await page.getByRole('button', { name: 'Correct', exact: true }).click();
+  const recoveredName = 'Recovered CSV Customer ' + unique;
+  await page.getByRole('dialog').last().getByLabel('Customer name').fill(recoveredName);
+  await page.getByRole('dialog').last().getByLabel('Customer type').selectOption('commercial');
+  await page.getByRole('dialog').last().getByLabel('Email').fill('recovered-' + unique + '@example.com');
+  await page.getByRole('dialog').last().getByLabel('Phone').fill('5550104');
+  await page.getByRole('dialog').last().getByLabel('Notes').fill('Corrected during E2E import recovery.');
+  await page.getByRole('button', { name: 'Save corrected row', exact: true }).click();
+  const retryPromise = page.waitForResponse(response => response.url() === API + '/api/v1/customers/imports/' + importJob.id + '/retry' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Retry pending rows', exact: true }).click();
+  const retryResponse = await retryPromise;
+  expect(retryResponse.status()).toBe(200);
+  const recoveredJob = await retryResponse.json();
+  expect(recoveredJob.status).toBe('completed');
+  expect(recoveredJob.imported_rows).toBe(3);
+  expect(recoveredJob.failed_rows).toBe(0);
+  await expect(page.getByRole('dialog').last()).toContainText('3 imported');
+  await capture(page, '14-customer-import-recovery.png');
 
   // Smoke-check every remaining protected route after authentication.
   const routes = [
