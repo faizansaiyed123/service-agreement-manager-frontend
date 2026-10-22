@@ -133,7 +133,10 @@ function CustomerDrawer({ customer, onClose, onChanged }: { customer: Customer; 
     </div>}
 
     <Attachments entityType="customer" entityId={customer.id} />
-    <div className="modal-actions">{customer.status === "active" && <Button className="btn-danger" onClick={() => void deactivate()}>Deactivate customer</Button>}</div>
+    <div className="modal-actions">
+      <Button className="btn-secondary" onClick={() => setEditOpen(true)}>Edit customer</Button>
+      {customer.status === "active" && <Button className="btn-danger" onClick={() => void deactivate()}>Deactivate customer</Button>}
+    </div>
 
     {contactOpen && <ContactModal customerId={customer.id} onClose={() => setContactOpen(false)} onCreated={contact => { setContacts(current => [...current, contact]); setContactOpen(false); }} />}
     {locationOpen && <LocationModal customerId={customer.id} onClose={() => setLocationOpen(false)} onCreated={location => { setLocations(current => [...current, location]); setLocationOpen(false); }} />}

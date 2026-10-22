@@ -45,13 +45,13 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   const unique = String(Date.now());
-  const ownerEmail = 'ledgerpulse-extended-' + unique + '@example.com';
+  const ownerEmail = 'morgan.ellis+extended-' + unique + '@example.com';
   const password = 'LedgerPulse-Extended!2026';
 
   // Create a browser-cookie session rather than relying on a bearer token in the UI.
   await page.goto('/register');
-  await page.getByLabel('Company name').fill('LedgerPulse Extended QA ' + unique);
-  await page.getByLabel('Your name').fill('LedgerPulse Extended Owner');
+  await page.getByLabel('Company name').fill('Northstar Facility Services');
+  await page.getByLabel('Your name').fill('Morgan Ellis');
   await page.getByLabel('Email').fill(ownerEmail);
   await page.getByLabel('Password').fill(password);
   const registerPromise = page.waitForResponse(response =>
@@ -96,6 +96,9 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   await expect(page.locator('.success-banner')).toContainText(/If an account exists/i);
   await capture(page, '22-password-reset-request.png');
 
+  await page.goto('/reset-password');
+  await expect(page.getByLabel('New password')).toBeVisible();
+  await capture(page, '23-password-reset-form.png');
   const uiResetToken = 'invalid-ui-reset-' + unique + '-0123456789abcdef';
   await page.goto('/reset-password#token=' + encodeURIComponent(uiResetToken));
   await page.getByLabel('New password').fill('LedgerPulse-Reset-UI!2026');
@@ -103,8 +106,10 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('');
   await page.getByRole('button', { name: 'Set new password', exact: true }).click();
   await expect(page.getByText(/password reset token is invalid or expired/i)).toBeVisible();
-  await capture(page, '23-password-reset-invalid-token.png');
 
+  await page.goto('/verify-email');
+  await expect(page.getByLabel('Choose password')).toBeVisible();
+  await capture(page, '24-email-verification-form.png');
   const uiVerificationToken = 'invalid-ui-verification-' + unique + '-0123456789abcdef';
   await page.goto('/verify-email#token=' + encodeURIComponent(uiVerificationToken));
   await page.getByLabel('Choose password').fill('LedgerPulse-Verify-UI!2026');
@@ -112,11 +117,10 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('');
   await page.getByRole('button', { name: 'Verify email and set password', exact: true }).click();
   await expect(page.getByText(/email verification link is invalid or expired/i)).toBeVisible();
-  await capture(page, '24-email-verification-invalid-token.png');
 
   // Create a customer and exercise real upload, metadata update, checksum-protected download and deletion.
   const customerResponse = await browserApi(page, 'POST', '/customers', {
-    name: 'Extended QA Customer ' + unique,
+    name: 'Bayfront Commerce Center',
     email: 'customer-' + unique + '@example.com',
     kind: 'commercial',
   });
@@ -169,8 +173,8 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   // Use an independent tenant to prove that attachment and webhook IDs cannot cross company boundaries.
   const secondOwnerResponse = await request.post(API + '/api/v1/auth/register', {
     data: {
-      company_name: 'LedgerPulse Second Tenant ' + unique,
-      full_name: 'Isolated Tenant Owner',
+      company_name: 'Crescent Service Partners',
+      full_name: 'Casey Morgan',
       email: 'ledgerpulse-tenant-' + unique + '@example.com',
       password: 'LedgerPulse-Second-Tenant!2026',
     },
@@ -192,14 +196,14 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
 
   // Webhook management and secret safety. No external receiver is contacted by this test.
   const insecureWebhook = await browserApi(page, 'POST', '/webhooks', {
-    name: 'Insecure endpoint ' + unique,
+    name: 'Insecure service-system webhook',
     url: 'http://example.com/webhook',
     events: ['customer.created'],
   });
   expect(insecureWebhook.status).toBe(422);
 
   const webhookResponse = await browserApi(page, 'POST', '/webhooks', {
-    name: 'QA endpoint ' + unique,
+    name: 'Northstar service-system webhook',
     url: 'https://example.com/ledgerpulse-test-webhook',
     events: ['customer.created', 'payment.received'],
   });
@@ -226,7 +230,7 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   await page.goto('/integrations');
   await expect(page.locator('h1').first()).toBeVisible();
   await page.getByRole('button', { name: 'Webhooks', exact: true }).click();
-  const webhookRow = page.locator('tr').filter({ hasText: 'QA endpoint ' + unique });
+  const webhookRow = page.locator('tr').filter({ hasText: 'Northstar service-system webhook' });
   await expect(webhookRow).toBeVisible();
   await expect(webhookRow).toContainText('Active');
   await expect(page.locator('body')).not.toContainText('Internal Server Error');
@@ -257,7 +261,7 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
     due_date: dueDate,
     lines: [{
       service_code: 'QA-' + unique.slice(-8),
-      description: 'Extended integration invoice',
+      description: 'Quarterly rooftop HVAC maintenance',
       quantity: '1',
       unit_price: '100.00',
     }],

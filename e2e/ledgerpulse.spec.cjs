@@ -27,10 +27,10 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   const unique = String(Date.now());
-  const email = 'ledgerpulse-e2e-' + unique + '@example.com';
-  const customerName = 'E2E HVAC Customer ' + unique;
-  const locationName = 'Primary Service Site ' + unique;
-  const agreementTitle = 'Annual HVAC Service ' + unique;
+  const email = 'morgan.ellis+' + unique + '@example.com';
+  const customerName = 'Harborview Medical Offices';
+  const locationName = 'Harborview Main Campus';
+  const agreementTitle = 'Preventive HVAC Maintenance Agreement';
 
   // Public entry point.
   await page.goto('/');
@@ -39,6 +39,9 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
 
   // Incorrect credentials should produce a readable error rather than a blank or stuck form.
   await page.goto('/login');
+  await expect(page.getByLabel('Email')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+  await capture(page, '02-login-page.png');
   await page.getByLabel('Email').fill('not-registered-' + unique + '@example.com');
   await page.getByLabel('Password').fill('Incorrect-Password-2026');
   const badLoginPromise = page.waitForResponse(response =>
@@ -47,12 +50,11 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   const badLogin = await badLoginPromise;
   expect(badLogin.status()).toBe(401);
   await expect(page.getByRole('alert')).toContainText(/Email or password is incorrect/i);
-  await capture(page, '02-login-invalid-credentials.png');
 
   // Create a disposable test owner. The CI API runs in development mode so verification mail is not required.
   await page.goto('/register');
-  await page.getByLabel('Company name').fill('LedgerPulse E2E Company ' + unique);
-  await page.getByLabel('Your name').fill('LedgerPulse E2E Owner');
+  await page.getByLabel('Company name').fill('Northstar Facility Services' + unique);
+  await page.getByLabel('Your name').fill('Morgan Ellis');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill('LedgerPulse-Test-Pass!2026');
   const registerPromise = page.waitForResponse(response =>
@@ -72,7 +74,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByRole('button', { name: 'Add customer', exact: true }).click();
   await page.getByLabel('Name').fill(customerName);
   await page.getByLabel('Email').fill('customer-' + unique + '@example.com');
-  await page.getByLabel('Notes').fill('Synthetic record created by automated end-to-end testing.');
+  await page.getByLabel('Notes').fill('Primary facilities contact for preventive maintenance and billing coordination.');
   const customerPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/customers' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create customer', exact: true }).click();
@@ -83,9 +85,31 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   expect(customer.status).toBe('active');
   await expect(page.getByRole('dialog').last()).toContainText(customerName);
 
+  await page.getByRole('button', { name: 'Edit customer', exact: true }).click();
+  const customerEditDialog = page.getByRole('dialog').last();
+  await customerEditDialog.getByLabel('Phone').fill('813-555-0148');
+  await customerEditDialog.getByRole('button', { name: 'Save customer', exact: true }).click();
+  await expect(page.getByRole('dialog').last()).toContainText('813-555-0148');
+  await page.getByLabel('Attachment description').fill('HVAC service history and equipment documentation');
+  await page.locator('.attachments input[type="file"]').setInputFiles({name:'Harborview-HVAC-Maintenance-Record.txt',mimeType:'text/plain',buffer:Buffer.from('Harborview Medical Offices\\nRooftop unit RTU-04\\nPreventive maintenance record.')});
+  await expect(page.getByText('Harborview-HVAC-Maintenance-Record.txt', { exact: true })).toBeVisible();
+  const attachmentRow = page.locator('.attachment-row').filter({ hasText: 'Harborview-HVAC-Maintenance-Record.txt' });
+  await attachmentRow.getByRole('button', { name: 'Edit details', exact: true }).click();
+  const attachmentEditDialog = page.getByRole('dialog').last();
+  await attachmentEditDialog.getByLabel('Description').fill('Annual service history — rooftop unit RTU-04');
+  await attachmentEditDialog.getByRole('button', { name: 'Save description', exact: true }).click();
+  await expect(attachmentRow).toContainText('Annual service history — rooftop unit RTU-04');
+  await capture(page, '04a-customer-documents.png');
+  const attachmentDownload = page.waitForEvent('download');
+  await attachmentRow.getByRole('button', { name: 'Download', exact: true }).click();
+  expect((await attachmentDownload).suggestedFilename()).toBe('Harborview-HVAC-Maintenance-Record.txt');
+  page.once('dialog', dialog => dialog.accept());
+  await attachmentRow.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByText('Harborview-HVAC-Maintenance-Record.txt', { exact: true })).toHaveCount(0);
+
   await page.getByRole('button', { name: /Contacts/ }).click();
   await page.getByRole('button', { name: 'Add contact', exact: true }).click();
-  const contactName = 'E2E Billing Contact ' + unique;
+  const contactName = 'Jordan Lee' + unique;
   await page.getByRole('dialog').last().getByLabel('Full name').fill(contactName);
   await page.getByRole('dialog').last().getByLabel('Email').fill('billing-' + unique + '@example.com');
   await page.getByRole('dialog').last().getByLabel('Phone').fill('5550101');
@@ -100,7 +124,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByRole('button', { name: /Locations/ }).click();
   await page.getByRole('button', { name: 'Add location', exact: true }).click();
   await page.getByLabel('Location name').fill(locationName);
-  await page.getByLabel('Address line 1').fill('123 E2E Test Avenue');
+  await page.getByLabel('Address line 1').fill('1200 Bayshore Boulevard');
   await page.getByLabel('City').fill('Tampa');
   await page.getByLabel('Region/state').fill('FL');
   await page.getByLabel('Postal code').fill('33602');
@@ -148,7 +172,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   expect((await proposedResponse.json()).status).toBe('proposed');
 
   await page.getByRole('button', { name: 'Record acceptance', exact: true }).click();
-  await page.getByLabel('Accepted by').fill('LedgerPulse E2E Owner');
+  await page.getByLabel('Accepted by').fill('Morgan Ellis');
   const acceptPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/agreements/' + agreement.id + '/accept' &&
     response.request().method() === 'POST');
@@ -188,7 +212,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByRole('button', { name: 'New invoice', exact: true }).click();
   await page.getByLabel('Customer').selectOption(customer.id);
   await page.getByLabel('Service location').selectOption(location.id);
-  await page.getByLabel('Service code').fill('E2E-HVAC');
+  await page.getByLabel('Service code').fill('HVAC-PREVENTIVE');
   await page.getByLabel('Description').fill('Preventive HVAC maintenance');
   await page.getByLabel('Unit price').fill('120.00');
   const invoicePromise = page.waitForResponse(response =>
@@ -234,9 +258,9 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByLabel('Customer').selectOption(customer.id);
   await page.getByLabel('Service location').selectOption(location.id);
   await page.getByLabel('Category').fill('HVAC system');
-  await page.getByLabel('Manufacturer').fill('E2E Systems');
-  await page.getByLabel('Model number').fill('QA-120');
-  await page.getByLabel('Serial number').fill('SERIAL-' + unique);
+  await page.getByLabel('Manufacturer').fill('Carrier');
+  await page.getByLabel('Model number').fill('WeatherMaker 48TC');
+  await page.getByLabel('Serial number').fill('RTU-04');
   const equipmentPromise = page.waitForResponse(response => response.url() === API + '/api/v1/equipment' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create equipment', exact: true }).click();
   const equipmentResponse = await equipmentPromise;
@@ -244,17 +268,22 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   const equipment = await equipmentResponse.json();
   expect(equipment.customer_id).toBe(customer.id);
   expect(equipment.service_location_id).toBe(location.id);
-  expect(equipment.serial_number).toBe('SERIAL-' + unique);
-  await expect(page.getByText('SERIAL-' + unique)).toBeVisible();
+  expect(equipment.serial_number).toBe('RTU-04');
+  await expect(page.getByText('RTU-04')).toBeVisible();
   await capture(page, '09-equipment-created.png');
+  const equipmentRow = page.getByRole('row').filter({ hasText: 'RTU-04' });
+  await equipmentRow.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByLabel('Notes').fill('Rooftop unit serving the Harborview main campus; inspect each quarter.');
+  await page.getByRole('button', { name: 'Save equipment', exact: true }).click();
+  await expect(equipmentRow).toContainText('RTU-04');
 
   await page.goto('/catalog');
   await expect(page.getByRole('heading', { name: 'Service catalog' })).toBeVisible();
   await page.getByRole('button', { name: 'Add service', exact: true }).click();
-  await page.getByLabel('Service code').fill('e2e-' + unique);
+  await page.getByLabel('Service code').fill('HVAC-INSPECT');
   await page.getByLabel('Category').fill('Maintenance');
-  await page.getByLabel('Name').fill('QA HVAC inspection');
-  await page.getByLabel('Description').fill('Synthetic catalog item from end-to-end testing.');
+  await page.getByLabel('Name').fill('Seasonal HVAC inspection');
+  await page.getByLabel('Description').fill('Seasonal inspection, coil cleaning and safety checks for rooftop HVAC equipment.');
   await page.getByLabel('Unit price').fill('150.00');
   await page.getByLabel('Duration, minutes').fill('60');
   const catalogPromise = page.waitForResponse(response => response.url() === API + '/api/v1/service-catalog' && response.request().method() === 'POST');
@@ -262,18 +291,25 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   const catalogResponse = await catalogPromise;
   expect(catalogResponse.status()).toBe(201);
   const catalogItem = await catalogResponse.json();
-  expect(catalogItem.service_code).toBe(('e2e-' + unique).toUpperCase());
+  expect(catalogItem.service_code).toBe(('HVAC-INSPECT').toUpperCase());
   expect(Number(catalogItem.unit_price)).toBe(150);
-  await expect(page.getByText(('e2e-' + unique).toUpperCase())).toBeVisible();
+  await expect(page.getByText(('HVAC-INSPECT').toUpperCase())).toBeVisible();
   await capture(page, '10-service-catalog-created.png');
+  const catalogRow = page.getByRole('row').filter({ hasText: 'HVAC-INSPECT' });
+  await catalogRow.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByLabel('Unit price').fill('165.00');
+  await page.getByLabel('Description').fill('Seasonal inspection, coil cleaning and safety checks; updated service rate.');
+  await page.getByRole('button', { name: 'Save service', exact: true }).click();
+  await expect(catalogRow).toContainText('165.00');
+  await capture(page, '10a-service-catalog-maintained.png');
 
   // Create a technician from Settings, then test the complete work-order lifecycle.
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await page.getByRole('button', { name: 'Team', exact: true }).click();
   await page.getByRole('button', { name: 'Add team member', exact: true }).click();
-  const technicianEmail = 'ledgerpulse-tech-' + unique + '@example.com';
-  await page.getByLabel('Full name').fill('E2E Technician');
+  const technicianEmail = 'taylor.brooks+' + unique + '@example.com';
+  await page.getByLabel('Full name').fill('Taylor Brooks');
   await page.getByLabel('Email').fill(technicianEmail);
   await page.getByLabel('Password').fill('LedgerPulse-Team-Member!2026');
   await page.getByLabel('Role').selectOption('technician');
@@ -292,11 +328,11 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByLabel('Service location').selectOption(location.id);
   await page.getByLabel('Equipment').selectOption(equipment.id);
   await page.getByRole('dialog').last().getByLabel('Agreement').selectOption(agreement.id);
-  const workOrderTitle = 'E2E HVAC service visit ' + unique;
+  const workOrderTitle = 'Quarterly rooftop HVAC inspection';
   await page.getByLabel('Title').fill(workOrderTitle);
   await page.getByLabel('Scheduled date').fill(new Date().toISOString().slice(0, 10));
   await page.getByLabel('Priority').selectOption('high');
-  await page.getByLabel('Description').fill('Synthetic job; no field visit will be performed.');
+  await page.getByLabel('Description').fill('Inspect the rooftop unit, clean coils and record operating pressures.');
   const workOrderPromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create work order', exact: true }).click();
   const workOrderResponse = await workOrderPromise;
@@ -306,7 +342,12 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   expect(workOrder.equipment_id).toBe(equipment.id);
   expect(workOrder.agreement_id).toBe(agreement.id);
   expect(workOrder.status).toBe('scheduled');
-  const workOrderRow = page.getByRole('row').filter({ hasText: workOrderTitle });
+  let workOrderRow = page.getByRole('row').filter({ hasText: workOrderTitle });
+  await workOrderRow.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByLabel('Description').fill('Quarterly preventive maintenance: inspect coils, belts and operating pressures.');
+  await page.getByRole('button', { name: 'Save work order', exact: true }).click();
+  workOrderRow = page.getByRole('row').filter({ hasText: workOrderTitle });
+  await expect(workOrderRow).toContainText(workOrderTitle);
   const assignPromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders/' + workOrder.id + '/assign' && response.request().method() === 'POST');
   await workOrderRow.getByRole('button', { name: 'Assign', exact: true }).click();
   await page.getByLabel('Technician').selectOption(technician.id);
@@ -340,12 +381,12 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByLabel('Customer').selectOption(customer.id);
   await page.getByLabel('Service location').selectOption(location.id);
   await page.getByRole('dialog').last().getByLabel('Agreement').selectOption(agreement.id);
-  const scheduleName = 'E2E HVAC Monthly ' + unique;
+  const scheduleName = 'Harborview Monthly HVAC Maintenance';
   await page.getByLabel('Name').fill(scheduleName);
   await page.getByLabel('Frequency').selectOption('monthly');
   await page.getByLabel('Next invoice').fill(new Date().toISOString().slice(0, 10));
   await page.getByLabel('Due days').fill('30');
-  await page.getByLabel('Service code').fill('E2E-RECURRING');
+  await page.getByLabel('Service code').fill('HVAC-MONTHLY');
   await page.getByLabel('Description').fill('Synthetic monthly HVAC service');
   await page.getByLabel('Unit price').fill('50.00');
   const recurringPromise = page.waitForResponse(response => response.url() === API + '/api/v1/recurring-invoices' && response.request().method() === 'POST');
@@ -400,11 +441,11 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   // CSV import path includes preview validation, partial success, row correction and retry.
   await page.goto('/customers');
   await page.getByRole('button', { name: 'Import CSV', exact: true }).click();
-  const importedName = 'CSV Import Customer ' + unique;
+  const importedName = 'Riverwalk Commerce Annex';
   const importCsv = 'name,kind,email,phone,notes\n' +
     importedName + ',commercial,csv-' + unique + '@example.com,5550101,Imported by E2E\n' +
-    'Duplicate Import Customer ' + unique + ',commercial,dup-' + unique + '@example.com,5550102,First duplicate\n' +
-    'Duplicate Import Customer ' + unique + ',commercial,dup-' + unique + '@example.com,5550103,Duplicate row';
+    'Duplicate Prospect Record' + ',commercial,dup-' + unique + '@example.com,5550102,First duplicate\n' +
+    'Duplicate Prospect Record' + ',commercial,dup-' + unique + '@example.com,5550103,Duplicate row';
   const previewPromise = page.waitForResponse(response => response.url() === API + '/api/v1/customers/imports/preview' && response.request().method() === 'POST');
   await page.locator('input[type=file]').setInputFiles({ name: 'ledgerpulse-customers.csv', mimeType: 'text/csv', buffer: Buffer.from(importCsv) });
   const previewResponse = await previewPromise;
@@ -428,7 +469,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   const importRow = page.getByRole('row').filter({ hasText: 'partial' });
   await importRow.getByRole('button', { name: 'Review', exact: true }).click();
   await page.getByRole('button', { name: 'Correct', exact: true }).click();
-  const recoveredName = 'Recovered CSV Customer ' + unique;
+  const recoveredName = 'Riverwalk Commerce Annex - Building B';
   await page.getByRole('dialog').last().getByLabel('Customer name').fill(recoveredName);
   await page.getByRole('dialog').last().getByLabel('Customer type').selectOption('commercial');
   await page.getByRole('dialog').last().getByLabel('Email').fill('recovered-' + unique + '@example.com');
@@ -464,12 +505,12 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.goto('/integrations');
   await expect(page.getByRole('heading', { name: 'Delivery & integrations' })).toBeVisible();
   await page.getByRole('button', { name: 'Queue email', exact: true }).click();
-  const queuedEmail = 'ledgerpulse-notify-' + unique + '@example.com';
-  const emailSubject = 'LedgerPulse E2E notification ' + unique;
+  const queuedEmail = 'facilities+' + unique + '@harborview.example.com';
+  const emailSubject = 'Preventive maintenance visit confirmation';
   await page.getByRole('dialog').last().getByLabel('Recipient').fill(queuedEmail);
   await page.getByRole('dialog').last().getByLabel('Subject').fill(emailSubject);
   await page.getByRole('dialog').last().getByLabel('Event type').fill('manual.notification');
-  await page.getByRole('dialog').last().getByLabel('Body').fill('Synthetic notification queued by the LedgerPulse end-to-end test.');
+  await page.getByRole('dialog').last().getByLabel('Body').fill('Your quarterly HVAC preventive-maintenance visit is scheduled. Reply to your service coordinator to arrange access.');
   const notificationPromise = page.waitForResponse(response => response.url() === API + '/api/v1/notifications' && response.request().method() === 'POST');
   await page.getByRole('dialog').last().getByRole('button', { name: 'Queue email', exact: true }).click();
   const notificationResponse = await notificationPromise;
@@ -486,14 +527,14 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByRole('button', { name: 'Queue SMS', exact: true }).click();
   await page.getByRole('dialog').last().getByLabel('Phone').fill('+15550101010');
   await page.getByRole('dialog').last().getByLabel('Event type').fill('manual.notification');
-  await page.getByRole('dialog').last().getByLabel('Message').fill('Synthetic SMS provider configuration check.');
+  await page.getByRole('dialog').last().getByLabel('Message').fill('Your next preventive-maintenance visit is scheduled for October 28 at 9:00 AM.');
+  await capture(page, '16-sms-message-composer.png');
   const smsPromise = page.waitForResponse(response => response.url() === API + '/api/v1/sms' && response.request().method() === 'POST');
   await page.getByRole('dialog').last().getByRole('button', { name: 'Queue SMS', exact: true }).click();
   const smsResponse = await smsPromise;
   expect(smsResponse.status()).toBe(503);
   expect((await smsResponse.json()).error.code).toBe('sms_provider_disabled');
   await expect(page.getByRole('dialog').last().getByText('SMS delivery is not configured')).toBeVisible();
-  await capture(page, '16-sms-provider-disabled.png');
 
   // Maintenance plan generation is idempotent for the same scheduled occurrence.
   await page.goto('/operations');
@@ -501,7 +542,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByRole('button', { name: 'New maintenance plan', exact: true }).click();
   await page.getByRole('dialog').last().getByLabel('Customer').selectOption(customer.id);
   await page.getByRole('dialog').last().getByLabel('Service location').selectOption(location.id);
-  const maintenanceName = 'E2E Quarterly HVAC Plan ' + unique;
+  const maintenanceName = 'Quarterly rooftop HVAC maintenance plan';
   await page.getByRole('dialog').last().getByLabel('Frequency').selectOption('quarterly');
   await page.getByRole('dialog').last().getByLabel('Plan name').fill(maintenanceName);
   await page.getByRole('dialog').last().getByLabel('Next due date').fill(new Date().toISOString().slice(0, 10));
