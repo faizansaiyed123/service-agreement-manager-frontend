@@ -51,7 +51,7 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   // Create a browser-cookie session rather than relying on a bearer token in the UI.
   await page.goto('/register');
   await page.getByLabel('Company name').fill('LedgerPulse Extended QA ' + unique);
-  await page.getByLabel('Your name').fill('LedgerPulse Extended Owner');
+  await page.getByLabel('Your name').fill('Morgan Ellis');
   await page.getByLabel('Email').fill(ownerEmail);
   await page.getByLabel('Password').fill(password);
   const registerPromise = page.waitForResponse(response =>
