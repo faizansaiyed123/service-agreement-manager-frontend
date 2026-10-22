@@ -213,6 +213,46 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await expect(page.getByText('paid', { exact: true })).toBeVisible();
   await capture(page, '08-invoice-paid.png');
 
+  // Equipment and catalog creation.
+  await page.goto('/assets');
+  await expect(page.getByRole('heading', { name: 'Equipment' })).toBeVisible();
+  await page.getByRole('button', { name: 'Add equipment', exact: true }).click();
+  await page.getByLabel('Customer').selectOption(customer.id);
+  await page.getByLabel('Service location').selectOption(location.id);
+  await page.getByLabel('Category').fill('HVAC system');
+  await page.getByLabel('Manufacturer').fill('E2E Systems');
+  await page.getByLabel('Model number').fill('QA-120');
+  await page.getByLabel('Serial number').fill('SERIAL-' + unique);
+  const equipmentPromise = page.waitForResponse(response => response.url() === API + '/api/v1/equipment' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Create equipment', exact: true }).click();
+  const equipmentResponse = await equipmentPromise;
+  expect(equipmentResponse.status()).toBe(201);
+  const equipment = await equipmentResponse.json();
+  expect(equipment.customer_id).toBe(customer.id);
+  expect(equipment.service_location_id).toBe(location.id);
+  expect(equipment.serial_number).toBe('SERIAL-' + unique);
+  await expect(page.getByText('SERIAL-' + unique)).toBeVisible();
+  await capture(page, '09-equipment-created.png');
+
+  await page.goto('/catalog');
+  await expect(page.getByRole('heading', { name: 'Service catalog' })).toBeVisible();
+  await page.getByRole('button', { name: 'Add service', exact: true }).click();
+  await page.getByLabel('Service code').fill('e2e-' + unique);
+  await page.getByLabel('Category').fill('Maintenance');
+  await page.getByLabel('Name').fill('QA HVAC inspection');
+  await page.getByLabel('Description').fill('Synthetic catalog item from end-to-end testing.');
+  await page.getByLabel('Unit price').fill('150.00');
+  await page.getByLabel('Duration, minutes').fill('60');
+  const catalogPromise = page.waitForResponse(response => response.url() === API + '/api/v1/service-catalog' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Create service', exact: true }).click();
+  const catalogResponse = await catalogPromise;
+  expect(catalogResponse.status()).toBe(201);
+  const catalogItem = await catalogResponse.json();
+  expect(catalogItem.service_code).toBe(('e2e-' + unique).toUpperCase());
+  expect(Number(catalogItem.unit_price)).toBe(150);
+  await expect(page.getByText(('e2e-' + unique).toUpperCase())).toBeVisible();
+  await capture(page, '10-service-catalog-created.png');
+
   // Smoke-check every remaining protected route after authentication.
   const routes = [
     ['/operations', 'Operations'],
