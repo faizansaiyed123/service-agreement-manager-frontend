@@ -319,6 +319,70 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await expect(workOrderRow).toContainText('completed');
   await capture(page, '11-work-order-completed.png');
 
+  // Recurring billing lifecycle: create, pause and resume a synthetic schedule.
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'Recurring billing', exact: true }).click();
+  await page.getByRole('button', { name: 'Add recurring schedule', exact: true }).click();
+  await page.getByLabel('Customer').selectOption(customer.id);
+  await page.getByLabel('Service location').selectOption(location.id);
+  await page.getByLabel('Agreement').selectOption(agreement.id);
+  const scheduleName = 'E2E HVAC Monthly ' + unique;
+  await page.getByLabel('Name').fill(scheduleName);
+  await page.getByLabel('Frequency').selectOption('monthly');
+  await page.getByLabel('Next invoice').fill(new Date().toISOString().slice(0, 10));
+  await page.getByLabel('Due days').fill('30');
+  await page.getByLabel('Service code').fill('E2E-RECURRING');
+  await page.getByLabel('Description').fill('Synthetic monthly HVAC service');
+  await page.getByLabel('Unit price').fill('50.00');
+  const recurringPromise = page.waitForResponse(response => response.url() === API + '/api/v1/recurring-invoices' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Create schedule', exact: true }).click();
+  const recurringResponse = await recurringPromise;
+  expect(recurringResponse.status()).toBe(201);
+  const recurring = await recurringResponse.json();
+  expect(recurring.customer_id).toBe(customer.id);
+  expect(recurring.agreement_id).toBe(agreement.id);
+  expect(recurring.is_active).toBe(true);
+  const recurringRow = page.getByRole('row').filter({ hasText: scheduleName });
+  await expect(recurringRow).toContainText('Active');
+  const pausePromise = page.waitForResponse(response => response.url() === API + '/api/v1/recurring-invoices/' + recurring.id + '/pause' && response.request().method() === 'POST');
+  await recurringRow.getByRole('button', { name: 'Pause', exact: true }).click();
+  const pausedResponse = await pausePromise;
+  expect(pausedResponse.status()).toBe(200);
+  expect((await pausedResponse.json()).is_active).toBe(false);
+  const resumePromise = page.waitForResponse(response => response.url() === API + '/api/v1/recurring-invoices/' + recurring.id + '/resume' && response.request().method() === 'POST');
+  await recurringRow.getByRole('button', { name: 'Resume', exact: true }).click();
+  const resumedResponse = await resumePromise;
+  expect(resumedResponse.status()).toBe(200);
+  expect((await resumedResponse.json()).is_active).toBe(true);
+  await capture(page, '12-recurring-billing-active.png');
+
+  // Download reporting CSVs and verify that the records created by this browser run are exported.
+  await page.goto('/reports');
+  await expect(page.getByRole('heading', { name: 'Reports' })).toBeVisible();
+  const customerDownloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Customers CSV', exact: true }).click();
+  const customerDownload = await customerDownloadPromise;
+  expect(customerDownload.suggestedFilename()).toBe('customers.csv');
+  const customerCsv = await fs.readFile(await customerDownload.path(), 'utf8');
+  expect(customerCsv).toContain('id,customer_number,kind,name,email,phone,status,created_at');
+  expect(customerCsv).toContain(customerName);
+  const agreementDownloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Agreements CSV', exact: true }).click();
+  const agreementDownload = await agreementDownloadPromise;
+  expect(agreementDownload.suggestedFilename()).toBe('agreements.csv');
+  expect(await fs.readFile(await agreementDownload.path(), 'utf8')).toContain(agreementTitle);
+  const invoiceDownloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Invoices CSV', exact: true }).click();
+  const invoiceDownload = await invoiceDownloadPromise;
+  expect(invoiceDownload.suggestedFilename()).toBe('invoices.csv');
+  expect(await fs.readFile(await invoiceDownload.path(), 'utf8')).toContain(invoice.invoice_number);
+  const orderDownloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Work orders CSV', exact: true }).click();
+  const orderDownload = await orderDownloadPromise;
+  expect(orderDownload.suggestedFilename()).toBe('work-orders.csv');
+  expect(await fs.readFile(await orderDownload.path(), 'utf8')).toContain(workOrderTitle);
+  await capture(page, '13-reports-and-csv-exports.png');
+
   // Smoke-check every remaining protected route after authentication.
   const routes = [
     ['/operations', 'Operations'],
