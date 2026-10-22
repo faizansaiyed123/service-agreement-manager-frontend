@@ -1,11 +1,12 @@
 # LedgerPulse — CI End-to-End Test Report
 
 **Result:** PASS for the listed isolated browser/API journeys  
-**Tested source commit:** [`d8fe77a674df221eb5d291fb35fcb9cad8ee2a41`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/d8fe77a674df221eb5d291fb35fcb9cad8ee2a41)  
-**CI run:** [Run #39758431771](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39758431771)  
+**Tested source commit:** [`32ee9319886d6256b7fbcfc5073b2a5be65116ba`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/32ee9319886d6256b7fbcfc5073b2a5be65116ba)  
+**CI run:** [Run #39759279376](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39759279376)  
 **Browser tests:** 4 passed, 0 failed, 0 skipped  
-**Successful visual checkpoints:** 21  
-**Backend tests:** 73 passed, 0 failures/errors, 2 skipped
+**Successful visual checkpoints:** 24  
+**Backend suite:** 73 passed, 0 failures/errors, 2 skipped  
+**PostgreSQL concurrency suite:** 2 passed, 0 failures/errors, 0 skipped
 
 ## Confirmed in this run
 
@@ -15,6 +16,7 @@
 | Backend readiness endpoint | PASS |
 | Alembic schema consistency (`alembic check`) | PASS |
 | Backend quality/tests (`ruff check .`, full `pytest` suite) | PASS — 73 passed, 0 failures/errors, 2 skipped |
+| PostgreSQL concurrency tests (concurrent invoice payment and maintenance generation) | PASS — 2 passed, 0 failures/errors, 0 skipped |
 | Frontend production build and preview | PASS |
 | Browser-to-API journey | PASS — customer, agreement, invoice/payment, assets/catalogue, work order, recurring schedule, CSV import/export, email outbox, maintenance and branch workflows |
 | Tenant isolation / untrusted Origin | PASS — tested customer isolation path and CORS-origin rejection |
@@ -24,7 +26,7 @@
 
 This is broad but bounded end-to-end coverage, not a test of every LedgerPulse feature, role, validation branch or production scenario. The [visual walkthrough](VISUAL-TEST-WALKTHROUGH.md) contains a feature-by-feature coverage inventory and explicitly labels partial and untested areas.
 
-Coverage was extended with browser-origin API flows for attachment upload/download/checksum/delete and tenant isolation; webhook endpoint validation/secret redaction/rotation/deactivation/tenant isolation; cookie refresh/logout revocation; password-reset response anti-enumeration; and invoice partial payments, idempotent replay/conflicts, overpayment rejection, refunds, credits, voiding and PDF generation. Backend pytest also covers the backend's broader role, token, webhook-signing/retry and business-rule tests. Still not fully verified are every role/resource combination, every validation/expiry/race edge, actual automatic recurring invoice generation, live SMTP/SMS/webhook provider delivery, production object storage and hosted production integration.
+Coverage was extended with browser-origin API flows for attachment upload/download/checksum/delete and tenant isolation; webhook endpoint validation/secret redaction/rotation/deactivation/tenant isolation; cookie refresh/logout revocation; password-reset anti-enumeration plus password-reset and email-verification error UI with token-fragment removal; and invoice partial payments, idempotent replay/conflicts, overpayment rejection, refunds, credits, voiding and PDF generation. Backend pytest also covers the backend's broader role, token, webhook-signing/retry and business-rule tests. Still not fully verified are every role/resource combination, every validation/expiry/race edge beyond the two tested PostgreSQL concurrency races, actual automatic recurring invoice generation, live SMTP/SMS/webhook provider delivery, production object storage and hosted production integration.
 
 The live deployment was not verified: Vercel inspection was blocked by deployment protection and no linked Render backend service was found in the connected workspace. Tests use a local production-built frontend, the backend repository's `main` branch and disposable PostgreSQL 16.
 

@@ -1,14 +1,18 @@
 {
-  "tested_source_commit": "d8fe77a674df221eb5d291fb35fcb9cad8ee2a41",
-  "workflow_run_id": 39758431771,
-  "workflow_run_url": "https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39758431771",
+  "tested_source_commit": "32ee9319886d6256b7fbcfc5073b2a5be65116ba",
+  "workflow_run_id": 39759279376,
+  "workflow_run_url": "https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39759279376",
   "browser": "Chromium / Playwright",
   "viewport": "1280x720 (homepage screenshot is full page)",
-  "successful_screenshot_count": 21,
+  "successful_screenshot_count": 24,
   "backend_test_count": 75,
   "backend_test_passed": 73,
   "backend_test_failures_or_errors": 0,
   "backend_test_skipped": 2,
+  "postgres_concurrency_test_count": 2,
+  "postgres_concurrency_test_passed": 2,
+  "postgres_concurrency_test_failures": 0,
+  "postgres_concurrency_test_skipped": 0,
   "historical_failure_screenshot_included": true,
   "successful_screenshots": [
     "01-public-homepage.png",
@@ -31,6 +35,9 @@
     "18-maintenance-plan-generation.png",
     "19-invoice-partially-paid.png",
     "20-integrations-webhooks.png",
-    "21-session-after-logout.png"
+    "21-session-after-logout.png",
+    "22-password-reset-request.png",
+    "23-password-reset-invalid-token.png",
+    "24-email-verification-invalid-token.png"
   ]
 }
