@@ -89,6 +89,31 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   expect(invalidReset.status).toBe(400);
   expect(invalidReset.body.error.code).toBe('invalid_reset_token');
 
+  // Exercise the real recovery screens as a user, including invalid/expired one-time token errors.
+  await page.goto('/forgot-password');
+  await page.getByLabel('Email').fill(ownerEmail);
+  await page.getByRole('button', { name: 'Send reset link', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText(/If an account exists/i);
+  await capture(page, '22-password-reset-request.png');
+
+  const uiResetToken = 'invalid-ui-reset-' + unique + '-0123456789abcdef';
+  await page.goto('/reset-password#token=' + encodeURIComponent(uiResetToken));
+  await page.getByLabel('New password').fill('LedgerPulse-Reset-UI!2026');
+  await page.getByLabel('Confirm password').fill('LedgerPulse-Reset-UI!2026');
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('');
+  await page.getByRole('button', { name: 'Set new password', exact: true }).click();
+  await expect(page.getByText(/password reset token is invalid or expired/i)).toBeVisible();
+  await capture(page, '23-password-reset-invalid-token.png');
+
+  const uiVerificationToken = 'invalid-ui-verification-' + unique + '-0123456789abcdef';
+  await page.goto('/verify-email#token=' + encodeURIComponent(uiVerificationToken));
+  await page.getByLabel('Choose password').fill('LedgerPulse-Verify-UI!2026');
+  await page.getByLabel('Confirm password').fill('LedgerPulse-Verify-UI!2026');
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('');
+  await page.getByRole('button', { name: 'Verify email and set password', exact: true }).click();
+  await expect(page.getByText(/email verification link is invalid or expired/i)).toBeVisible();
+  await capture(page, '24-email-verification-invalid-token.png');
+
   // Create a customer and exercise real upload, metadata update, checksum-protected download and deletion.
   const customerResponse = await browserApi(page, 'POST', '/customers', {
     name: 'Extended QA Customer ' + unique,
@@ -197,14 +222,18 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   expect(rotation.status).toBe(200);
   expect(rotation.body.secret).toBeTruthy();
   expect(rotation.body.secret).not.toBe(firstSecret);
+  // Capture an actually active endpoint in the real integrations UI, after the secret rotation.
+  await page.goto('/integrations');
+  await expect(page.locator('h1').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Webhooks', exact: true }).click();
+  await expect(page.getByText('QA endpoint ' + unique, { exact: true })).toBeVisible();
+  await expect(page.getByText('Active', { exact: true })).toBeVisible();
+  await expect(page.locator('body')).not.toContainText('Internal Server Error');
+  await capture(page, '20-integrations-webhooks.png');
+
   const webhookDelete = await browserApi(page, 'DELETE', '/webhooks/' + webhookId);
   expect(webhookDelete.status).toBe(200);
   expect(webhookDelete.body.is_active).toBe(false);
-
-  await page.goto('/integrations');
-  await expect(page.locator('h1').first()).toBeVisible();
-  await expect(page.locator('body')).not.toContainText('Internal Server Error');
-  await capture(page, '20-integrations-webhooks.png');
 
   // Exercise a complete invoice adjustment sequence against the same browser-cookie session.
   const locationResponse = await browserApi(page, 'POST',
