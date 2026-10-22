@@ -1,4 +1,4 @@
-name: LedgerPulse end-to-end verification
+name: Service Agreement Manager end-to-end verification
 
 on:
   push:
