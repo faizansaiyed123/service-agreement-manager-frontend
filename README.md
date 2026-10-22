@@ -2,6 +2,8 @@
 
 Production-oriented React/Vite frontend for the Service Agreement Manager backend.
 
+**[Explore the complete visual product walkthrough →](visual.md)** — a guided tour of the real application, with screenshots for workspace setup, customers, agreements, service operations, billing, reporting and integrations.
+
 ## Development
 
 1. Copy `.env.example` to `.env`.
