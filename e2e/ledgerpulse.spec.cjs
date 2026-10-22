@@ -277,7 +277,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByLabel('Customer').selectOption(customer.id);
   await page.getByLabel('Service location').selectOption(location.id);
   await page.getByLabel('Equipment').selectOption(equipment.id);
-  await page.getByLabel('Agreement').selectOption(agreement.id);
+  await page.getByRole('dialog').last().getByLabel('Agreement').selectOption(agreement.id);
   const workOrderTitle = 'E2E HVAC service visit ' + unique;
   await page.getByLabel('Title').fill(workOrderTitle);
   await page.getByLabel('Scheduled date').fill(new Date().toISOString().slice(0, 10));
@@ -325,7 +325,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByRole('button', { name: 'Add recurring schedule', exact: true }).click();
   await page.getByLabel('Customer').selectOption(customer.id);
   await page.getByLabel('Service location').selectOption(location.id);
-  await page.getByLabel('Agreement').selectOption(agreement.id);
+  await page.getByRole('dialog').last().getByLabel('Agreement').selectOption(agreement.id);
   const scheduleName = 'E2E HVAC Monthly ' + unique;
   await page.getByLabel('Name').fill(scheduleName);
   await page.getByLabel('Frequency').selectOption('monthly');
