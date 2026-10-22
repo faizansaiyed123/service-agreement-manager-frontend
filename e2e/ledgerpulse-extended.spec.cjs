@@ -45,7 +45,7 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   const unique = String(Date.now());
-  const ownerEmail = 'ledgerpulse-extended-' + unique + '@example.com';
+  const ownerEmail = 'morgan.ellis+extended-' + unique + '@example.com';
   const password = 'LedgerPulse-Extended!2026';
 
   // Create a browser-cookie session rather than relying on a bearer token in the UI.
