@@ -619,3 +619,150 @@ test('API rejects cross-tenant record access and untrusted origins', async ({ re
   expect(untrustedOriginResponse.status()).toBe(403);
   expect((await untrustedOriginResponse.json()).error.code).toBe('origin_not_allowed');
 });
+
+
+test('API lifecycle covers partial payments, refunds, credits, voiding, attachments and webhooks', async ({ request }) => {
+  const unique = String(Date.now());
+  const registered = await request.post(API + '/api/v1/auth/register', {
+    data: {
+      company_name: 'LedgerPulse Adjustment QA ' + unique,
+      full_name: 'Adjustment QA Owner',
+      email: 'ledgerpulse-adjustment-' + unique + '@example.com',
+      password: 'LedgerPulse-Adjustment!2026',
+    },
+  });
+  expect(registered.status()).toBe(201);
+  const auth = await registered.json();
+  const headers = { Authorization: 'Bearer ' + auth.access_token };
+  const customerResponse = await request.post(API + '/api/v1/customers', {
+    headers,
+    data: { name: 'Adjustment Customer ' + unique, email: 'adjustment-' + unique + '@example.com' },
+  });
+  expect(customerResponse.status()).toBe(201);
+  const customer = await customerResponse.json();
+
+  const invoiceResponse = await request.post(API + '/api/v1/invoices', {
+    headers,
+    data: {
+      customer_id: customer.id,
+      invoice_date: new Date().toISOString().slice(0, 10),
+      due_date: new Date(Date.now() + 86400000 * 30).toISOString().slice(0, 10),
+      lines: [{ service_code: 'QA-ADJUST', description: 'Adjustment lifecycle test', quantity: '1', unit_price: '100.00' }],
+    },
+  });
+  expect(invoiceResponse.status()).toBe(201);
+  const invoice = await invoiceResponse.json();
+  expect(Number(invoice.total_amount)).toBe(100);
+
+  const issuedResponse = await request.post(API + '/api/v1/invoices/' + invoice.id + '/issue', { headers });
+  expect(issuedResponse.status()).toBe(200);
+  expect((await issuedResponse.json()).status).toBe('issued');
+
+  const paymentHeaders = { ...headers, 'Idempotency-Key': 'partial-pay-' + unique };
+  const paymentResponse = await request.post(API + '/api/v1/invoices/' + invoice.id + '/payments', {
+    headers: paymentHeaders,
+    data: { amount: '40.00', payment_method: 'bank_transfer', reference: 'QA-PARTIAL-' + unique },
+  });
+  expect(paymentResponse.status()).toBe(201);
+  const payment = await paymentResponse.json();
+
+  const replayResponse = await request.post(API + '/api/v1/invoices/' + invoice.id + '/payments', {
+    headers: paymentHeaders,
+    data: { amount: '40.00', payment_method: 'bank_transfer', reference: 'QA-PARTIAL-' + unique },
+  });
+  expect(replayResponse.status()).toBe(200);
+  expect((await replayResponse.json()).id).toBe(payment.id);
+
+  let currentResponse = await request.get(API + '/api/v1/invoices/' + invoice.id, { headers });
+  let current = await currentResponse.json();
+  expect(current.status).toBe('partially_paid');
+  expect(Number(current.amount_paid)).toBe(40);
+  expect(Number(current.balance_due)).toBe(60);
+
+  const refundResponse = await request.post(API + '/api/v1/invoices/' + invoice.id + '/payments/' + payment.id + '/refunds', {
+    headers: { ...headers, 'Idempotency-Key': 'partial-refund-' + unique },
+    data: { amount: '10.00', refund_method: 'bank_transfer', reference: 'QA-REFUND-' + unique, reason: 'Partial refund verification' },
+  });
+  expect(refundResponse.status()).toBe(201);
+  currentResponse = await request.get(API + '/api/v1/invoices/' + invoice.id, { headers });
+  current = await currentResponse.json();
+  expect(current.status).toBe('partially_paid');
+  expect(Number(current.amount_refunded)).toBe(10);
+  expect(Number(current.balance_due)).toBe(70);
+
+  const creditResponse = await request.post(API + '/api/v1/invoices/' + invoice.id + '/credits', {
+    headers: { ...headers, 'Idempotency-Key': 'partial-credit-' + unique },
+    data: { amount: '20.00', reason: 'Credit balance verification' },
+  });
+  expect(creditResponse.status()).toBe(201);
+  currentResponse = await request.get(API + '/api/v1/invoices/' + invoice.id, { headers });
+  current = await currentResponse.json();
+  expect(Number(current.credits_applied)).toBe(20);
+  expect(Number(current.balance_due)).toBe(50);
+
+  const excessiveCredit = await request.post(API + '/api/v1/invoices/' + invoice.id + '/credits', {
+    headers: { ...headers, 'Idempotency-Key': 'excess-credit-' + unique },
+    data: { amount: '100.00', reason: 'Must exceed outstanding balance' },
+  });
+  expect(excessiveCredit.status()).toBe(409);
+  expect((await excessiveCredit.json()).error.code).toBe('credit_exceeds_balance');
+
+  const draftForVoid = await request.post(API + '/api/v1/invoices', {
+    headers,
+    data: {
+      customer_id: customer.id,
+      invoice_date: new Date().toISOString().slice(0, 10),
+      due_date: new Date(Date.now() + 86400000 * 30).toISOString().slice(0, 10),
+      lines: [{ service_code: 'QA-VOID', description: 'Void lifecycle test', quantity: '1', unit_price: '25.00' }],
+    },
+  });
+  expect(draftForVoid.status()).toBe(201);
+  const voidInvoice = await draftForVoid.json();
+  const voidResponse = await request.post(API + '/api/v1/invoices/' + voidInvoice.id + '/void', {
+    headers,
+    data: { reason: 'QA verified void path' },
+  });
+  expect(voidResponse.status()).toBe(200);
+  expect((await voidResponse.json()).status).toBe('void');
+
+  const attachmentContent = 'LedgerPulse attachment lifecycle ' + unique;
+  const attachmentUpload = await request.post(API + '/api/v1/attachments/customer/' + customer.id, {
+    headers,
+    multipart: {
+      file: { name: 'qa-attachment.txt', mimeType: 'text/plain', buffer: Buffer.from(attachmentContent) },
+      description: 'QA attachment lifecycle',
+    },
+  });
+  expect(attachmentUpload.status()).toBe(201);
+  const attachment = await attachmentUpload.json();
+  expect(attachment.sha256).toBeTruthy();
+  const attachmentList = await request.get(API + '/api/v1/attachments?entity_type=customer&entity_id=' + customer.id, { headers });
+  expect(attachmentList.status()).toBe(200);
+  expect(attachmentList.json ? (await attachmentList.json()).some(item => item.id === attachment.id) : false).toBe(true);
+  const attachmentDownload = await request.get(API + '/api/v1/attachments/' + attachment.id + '/download', { headers });
+  expect(attachmentDownload.status()).toBe(200);
+  expect(await attachmentDownload.text()).toBe(attachmentContent);
+  const attachmentDelete = await request.delete(API + '/api/v1/attachments/' + attachment.id, { headers });
+  expect(attachmentDelete.status()).toBe(200);
+  expect((await request.get(API + '/api/v1/attachments/' + attachment.id, { headers })).status()).toBe(404);
+
+  const webhookCreate = await request.post(API + '/api/v1/webhooks', {
+    headers,
+    data: { name: 'QA webhook ' + unique, url: 'https://example.com/ledgerpulse-hook', events: ['customer.created', 'payment.received'] },
+  });
+  expect(webhookCreate.status()).toBe(201);
+  const webhook = await webhookCreate.json();
+  expect(webhook.secret.length).toBeGreaterThanOrEqual(32);
+  const webhookList = await request.get(API + '/api/v1/webhooks', { headers });
+  expect(webhookList.status()).toBe(200);
+  const listedWebhook = (await webhookList.json()).find(item => item.id === webhook.id);
+  expect(listedWebhook).toBeTruthy();
+  expect(listedWebhook.secret).toBeUndefined();
+
+  const rotated = await request.post(API + '/api/v1/webhooks/' + webhook.id + '/rotate-secret', { headers });
+  expect(rotated.status()).toBe(200);
+  expect((await rotated.json()).secret).not.toBe(webhook.secret);
+  const disabled = await request.delete(API + '/api/v1/webhooks/' + webhook.id, { headers });
+  expect(disabled.status()).toBe(200);
+  expect((await disabled.json()).is_active).toBe(false);
+});
