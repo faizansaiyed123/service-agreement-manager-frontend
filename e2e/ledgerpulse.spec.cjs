@@ -349,9 +349,9 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   const pausedResponse = await pausePromise;
   expect(pausedResponse.status()).toBe(200);
   expect((await pausedResponse.json()).is_active).toBe(false);
-  const resumePromise = page.waitForResponse(response => response.url() === API + '/api/v1/recurring-invoices/' + recurring.id + '/resume' && response.request().method() === 'POST');
+  const recurringResumePromise = page.waitForResponse(response => response.url() === API + '/api/v1/recurring-invoices/' + recurring.id + '/resume' && response.request().method() === 'POST');
   await recurringRow.getByRole('button', { name: 'Resume', exact: true }).click();
-  const resumedResponse = await resumePromise;
+  const resumedResponse = await recurringResumePromise;
   expect(resumedResponse.status()).toBe(200);
   expect((await resumedResponse.json()).is_active).toBe(true);
   await capture(page, '12-recurring-billing-active.png');
