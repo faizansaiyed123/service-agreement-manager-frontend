@@ -2,8 +2,8 @@
 
 > Curated screenshots from verified browser states. The regression image is historical failure evidence and is deliberately not counted as a successful checkpoint.
 
-**Tested source commit:** [`a5e68ab30e84353f887c411c8ccce72e5f02c765`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/a5e68ab30e84353f887c411c8ccce72e5f02c765)  
-**CI workflow:** [Run #39728741159](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39728741159)  
+**Tested source commit:** [`f922945bc3e5ab0c78655faa243af3bca34b4042`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/f922945bc3e5ab0c78655faa243af3bca34b4042)  
+**CI workflow:** [Run #39757382869](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39757382869)  
 **Browser:** Chromium controlled by Playwright  
 **Application build:** Vite production build served locally against the FastAPI backend on `main`  
 **Database:** Disposable PostgreSQL 16  
@@ -13,7 +13,7 @@
 
 This report follows Sayphora's screenshot layout: journeys are ordered, images are displayed in aligned two-column HTML tables, and each screenshot has a caption describing the action and assertion. Images are captured only after checkpoint assertions succeed, except the separately labelled historical regression reproduction.
 
-**Latest automated result:** 2 Playwright tests passed, 0 failed, 0 skipped. There are 18 successful screenshot checkpoints. These checks provide broad integration evidence, **not a claim that every LedgerPulse feature or every edge case has been tested**.
+**Latest automated result:** 3 Playwright tests passed, 0 failed, 0 skipped. There are 18 successful screenshot checkpoints. These checks provide broad integration evidence, **not a claim that every LedgerPulse feature or every edge case has been tested**.
 
 ## Regression evidence — before and after the fix
 
