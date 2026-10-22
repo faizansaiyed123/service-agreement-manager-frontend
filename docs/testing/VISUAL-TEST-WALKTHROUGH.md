@@ -2,8 +2,8 @@
 
 > Curated screenshots from verified browser states. The regression image is historical failure evidence and is deliberately not counted as a successful checkpoint.
 
-**Tested source commit:** [`96e937307dbf210fb1ca1ab233ed9601e2dc9c3c`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/96e937307dbf210fb1ca1ab233ed9601e2dc9c3c)  
-**CI workflow:** [Run #39760207588](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39760207588)  
+**Tested source commit:** [`ed8cf14918e96c4138ab3f2b82dc89e1d2a20be0`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/ed8cf14918e96c4138ab3f2b82dc89e1d2a20be0)  
+**CI workflow:** [Run #39760398718](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39760398718)  
 **Browser:** Chromium controlled by Playwright  
 **Application build:** Vite production build served locally against the FastAPI backend on `main`  
 **Database:** Disposable PostgreSQL 16  
