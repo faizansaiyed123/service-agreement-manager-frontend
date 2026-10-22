@@ -1,0 +1,145 @@
+name: LedgerPulse end-to-end verification
+
+on:
+  push:
+    branches:
+      - "qa/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-api-e2e:
+    name: Production frontend + PostgreSQL API + Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: service_agreements
+          POSTGRES_USER: sam
+          POSTGRES_PASSWORD: sam_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sam -d service_agreements"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://sam:sam_test_password@localhost:5432/service_agreements
+      APP_ENV: development
+      JWT_SECRET_KEY: test-secret-with-more-than-32-characters-long
+      CORS_ORIGINS: http://127.0.0.1:4173
+      WEBHOOK_ENCRYPTION_KEY: test-webhook-encryption-key-2026-only
+      E2E_API_URL: http://127.0.0.1:8000
+    steps:
+      - name: Check out frontend
+        uses: actions/checkout@v4
+
+      - name: Check out backend
+        uses: actions/checkout@v4
+        with:
+          repository: faizansaiyed123/service-agreement-manager-backend
+          ref: main
+          path: backend
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install backend and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "./backend[dev]"
+
+      - name: Install frontend dependencies and Playwright
+        run: |
+          npm ci --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund @playwright/test
+          npx playwright install --with-deps chromium
+
+      - name: Apply database migrations
+        working-directory: backend
+        run: python -m alembic upgrade head
+
+      - name: Start API and wait for database readiness
+        run: |
+          cd backend
+          nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > ../backend.log 2>&1 &
+          cd ..
+          python - <<'PY'
+          import time
+          import urllib.error
+          import urllib.request
+
+          url = "http://127.0.0.1:8000/health/ready"
+          last_error = None
+          for _ in range(45):
+              try:
+                  with urllib.request.urlopen(url, timeout=3) as response:
+                      if response.status == 200:
+                          print(response.read().decode())
+                          break
+              except (urllib.error.URLError, TimeoutError) as exc:
+                  last_error = exc
+                  time.sleep(2)
+          else:
+              raise SystemExit(f"Backend readiness check failed: {last_error}")
+          PY
+
+      - name: Build the frontend production bundle against the local API
+        env:
+          VITE_API_URL: http://127.0.0.1:8000
+          VITE_PUBLIC_REGISTRATION: "true"
+        run: npm run build
+
+      - name: Start the production frontend preview
+        run: |
+          nohup npm run preview -- --host 127.0.0.1 --port 4173 --strictPort > frontend.log 2>&1 &
+          python - <<'PY'
+          import time
+          import urllib.error
+          import urllib.request
+
+          url = "http://127.0.0.1:4173/"
+          last_error = None
+          for _ in range(30):
+              try:
+                  with urllib.request.urlopen(url, timeout=3) as response:
+                      if response.status == 200:
+                          print(f"Frontend ready: HTTP {response.status}")
+                          break
+              except (urllib.error.URLError, TimeoutError) as exc:
+                  last_error = exc
+                  time.sleep(1)
+          else:
+              raise SystemExit(f"Frontend readiness check failed: {last_error}")
+          PY
+
+      - name: Run browser journeys and API integration checks
+        run: npx playwright test --config=playwright.e2e.config.cjs
+
+      - name: Upload screenshots, browser traces and service logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ledgerpulse-e2e-evidence
+          path: |
+            test-results/**
+            playwright-report/**
+            backend.log
+            frontend.log
+          if-no-files-found: warn
+          retention-days: 14
