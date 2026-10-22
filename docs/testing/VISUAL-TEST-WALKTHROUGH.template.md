@@ -78,6 +78,15 @@ __FAILURE_SCREENSHOT_NOTE__
 </tr>
 </tbody></table>
 
+### Invoice payment, refund and credit — UI trail
+
+<table><tbody>
+<tr>
+<td width="50%" valign="top"><h3>25. Payment, refund and credit history</h3><a href="visuals/25-invoice-adjustments-ui.png"><img src="visuals/25-invoice-adjustments-ui.png" alt="Invoice detail dialog showing payment, refund and credit history after UI actions" width="100%"/></a><p>The remaining payment is submitted through the invoice dialog, followed by a partial refund and a credit through their actual UI forms. API assertions then verify refund/credit idempotency, reject over-refund and excess-credit requests, and confirm a zero balance. The screenshot captures the resulting payment/refund/credit history.</p><p><em>Viewport: 1280 × 720</em></p></td>
+<td width="50%" valign="top"></td>
+</tr>
+</tbody></table>
+
 ### Recovery screens and invalid-link handling
 
 <table><tbody>
@@ -98,7 +107,7 @@ __FAILURE_SCREENSHOT_NOTE__
 | Registration / sessions / recovery | **Partial pass — extended** | UI registration, session identity/refresh, logout/revocation, protected-route redirect, password reset request UI, invalid reset-token UI, invalid email-verification UI, anti-enumeration and removal of one-time token fragments from the address bar. Valid token/password flows are covered by the backend suite; actual email inbox delivery is not tested. |
 | Customers / contacts / locations | **Partial pass** | Customer, billing-contact, location creation and CSV import/recovery. Edit/deactivate/search/pagination, attachments and all validations are not tested. |
 | Agreements | **Partial pass** | Draft → proposed → effective-today active → suspend/resume; modal defect reproduced/fixed. Cancel, renewals, expiry, future-start acceptance and all invalid transitions are not tested. |
-| Invoices / payments | **Partial pass — extended** | Draft/issue/full payment in the UI journey; extended browser-origin API flow covers partial payment, replayed idempotency key, changed-payload conflict, overpayment rejection, full settlement, refund, credit, void transition and PDF response. Tax/discount combinations, provider payment gateways and all race conditions are not all exercised. |
+| Invoices / payments | **Partial pass — extended** | Draft/issue/full payment in the original UI journey; extended UI journey records a partial then final payment, performs a partial refund and applies a credit through the invoice dialogs, and inspects the payment/refund/credit activity UI. API assertions cover idempotency replay/conflict, overpayment/refund/credit cap rejection, void transition and PDF response. Tax/discount combinations, provider payment gateways and all race conditions are not all exercised. |
 | Equipment / service catalogue | **Partial pass** | One equipment record and one service item created and persisted. Update, deactivate/decommission, delete and filter paths are not tested. |
 | Work orders / technician access | **Partial pass** | Create → assign → start → complete using owner session and synthetic technician. Technician self-login, edit/cancel, appointment validation and checklist enforcement are not tested. |
 | Maintenance plans | **Partial pass** | Plan created, order generated and repeated occurrence is idempotent. Schedule editing/deactivation and due-date/checklist edge cases are not tested. |
