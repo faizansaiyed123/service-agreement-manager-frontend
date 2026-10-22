@@ -446,6 +446,41 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await expect(page.getByRole('dialog').last()).toContainText('3 imported');
   await capture(page, '14-customer-import-recovery.png');
 
+  // Email is safely queued to the outbox; no sender worker runs in this test environment.
+  await page.goto('/integrations');
+  await expect(page.getByRole('heading', { name: 'Delivery & integrations' })).toBeVisible();
+  await page.getByRole('button', { name: 'Queue email', exact: true }).click();
+  const queuedEmail = 'ledgerpulse-notify-' + unique + '@example.com';
+  const emailSubject = 'LedgerPulse E2E notification ' + unique;
+  await page.getByRole('dialog').last().getByLabel('Recipient').fill(queuedEmail);
+  await page.getByRole('dialog').last().getByLabel('Subject').fill(emailSubject);
+  await page.getByRole('dialog').last().getByLabel('Event type').fill('manual.notification');
+  await page.getByRole('dialog').last().getByLabel('Body').fill('Synthetic notification queued by the LedgerPulse end-to-end test.');
+  const notificationPromise = page.waitForResponse(response => response.url() === API + '/api/v1/notifications' && response.request().method() === 'POST');
+  await page.getByRole('dialog').last().getByRole('button', { name: 'Queue email', exact: true }).click();
+  const notificationResponse = await notificationPromise;
+  expect(notificationResponse.status()).toBe(201);
+  const notification = await notificationResponse.json();
+  expect(notification.status).toBe('queued');
+  expect(notification.recipient_email).toBe(queuedEmail);
+  await expect(page.getByText(queuedEmail, { exact: true })).toBeVisible();
+  await expect(page.getByText(emailSubject, { exact: true })).toBeVisible();
+  await capture(page, '15-email-queued.png');
+
+  // SMS is intentionally not delivered when the provider is disabled; the UI must expose the backend error.
+  await page.getByRole('button', { name: 'SMS', exact: true }).click();
+  await page.getByRole('button', { name: 'Queue SMS', exact: true }).click();
+  await page.getByRole('dialog').last().getByLabel('Phone').fill('+15550101010');
+  await page.getByRole('dialog').last().getByLabel('Event type').fill('manual.notification');
+  await page.getByRole('dialog').last().getByLabel('Message').fill('Synthetic SMS provider configuration check.');
+  const smsPromise = page.waitForResponse(response => response.url() === API + '/api/v1/sms' && response.request().method() === 'POST');
+  await page.getByRole('dialog').last().getByRole('button', { name: 'Queue SMS', exact: true }).click();
+  const smsResponse = await smsPromise;
+  expect(smsResponse.status()).toBe(503);
+  expect((await smsResponse.json()).error.code).toBe('sms_provider_disabled');
+  await expect(page.getByRole('dialog').last().getByText('SMS delivery is not configured')).toBeVisible();
+  await capture(page, '16-sms-provider-disabled.png');
+
   // Smoke-check every remaining protected route after authentication.
   const routes = [
     ['/operations', 'Operations'],
