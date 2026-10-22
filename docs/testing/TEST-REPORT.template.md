@@ -1,4 +1,4 @@
-# LedgerPulse — CI End-to-End Test Report
+# Service Agreement Manager — CI End-to-End Test Report
 
 **Result:** PASS for the listed isolated browser/API journeys  
 **Tested source commit:** [`__TESTED_SHA__`](https://github.com/__REPOSITORY__/commit/__TESTED_SHA__)  
@@ -24,7 +24,7 @@
 
 ## Do not interpret this as full feature sign-off
 
-This is broad but bounded end-to-end coverage, not a test of every LedgerPulse feature, role, validation branch or production scenario. The [visual walkthrough](VISUAL-TEST-WALKTHROUGH.md) contains a feature-by-feature coverage inventory and explicitly labels partial and untested areas.
+This is broad but bounded end-to-end coverage, not a test of every Service Agreement Manager feature, role, validation branch or production scenario. The [visual walkthrough](VISUAL-TEST-WALKTHROUGH.md) contains a feature-by-feature coverage inventory and explicitly labels partial and untested areas.
 
 Coverage was extended with browser-origin API flows for attachment upload/download/checksum/delete and tenant isolation; webhook endpoint validation/secret redaction/rotation/deactivation/tenant isolation; cookie refresh/logout revocation; password-reset anti-enumeration plus password-reset and email-verification error UI with token-fragment removal; and invoice partial payments, idempotent replay/conflicts, overpayment rejection, refunds, credits, voiding and PDF generation. Backend pytest also covers the backend's broader role, token, webhook-signing/retry and business-rule tests. Still not fully verified are every role/resource combination, every validation/expiry/race edge beyond the two tested PostgreSQL concurrency races, the live deployed recurring-billing scheduler/worker cadence, live SMTP/SMS/webhook provider delivery, production object storage and hosted production integration.
 

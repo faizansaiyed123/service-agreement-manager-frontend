@@ -1,4 +1,4 @@
-name: LedgerPulse end-to-end verification
+name: Service Agreement Manager end-to-end verification
 
 on:
   push:
@@ -201,22 +201,6 @@ jobs:
           rm -f docs/testing/visuals/*.png
           cp .visual-evidence/test-results/screenshots/*.png docs/testing/visuals/
 
-          # Keep the original defect reproduction separate from successful checkpoints.
-          if curl --location --fail --silent --show-error \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "${SOURCE_API_URL}/repos/${SOURCE_REPOSITORY}/actions/artifacts/12400621946/zip" \
-            -o "${RUNNER_TEMP}/ledgerpulse-first-failure.zip"; then
-            FAILURE_PATH="$(unzip -Z1 "${RUNNER_TEMP}/ledgerpulse-first-failure.zip" | grep -E '/test-failed-1\.png$' | head -n 1 || true)"
-            if [ -n "${FAILURE_PATH}" ]; then
-              unzip -p "${RUNNER_TEMP}/ledgerpulse-first-failure.zip" "${FAILURE_PATH}" > docs/testing/visuals/00-before-fix-agreement-acceptance-modal.png
-            else
-              echo "Historical test-failure screenshot was not found in the source artifact."
-            fi
-          else
-            echo "Historical failure artifact has expired or cannot be accessed; continuing with successful checkpoints."
-          fi
-
           python - <<'PY'
           import json
           import os
@@ -260,8 +244,7 @@ jobs:
           race_passed = max(0, race_total - race_failures - race_skipped)
 
           screenshot_names = sorted(p.name for p in visuals.glob('*.png'))
-          successful = [name for name in screenshot_names if not name.startswith('00-')]
-          has_before_fix = '00-before-fix-agreement-acceptance-modal.png' in screenshot_names
+          successful = screenshot_names
 
           template = (root / 'VISUAL-TEST-WALKTHROUGH.template.md').read_text(encoding='utf-8')
           replacements = {
@@ -279,11 +262,6 @@ jobs:
               '__PG_RACE_PASSED__': str(race_passed),
               '__PG_RACE_FAILED__': str(race_failures),
               '__PG_RACE_SKIPPED__': str(race_skipped),
-              '__FAILURE_SCREENSHOT_NOTE__': (
-                  'The original before-fix screenshot is embedded below and clearly marked as a failed historical state.'
-                  if has_before_fix
-                  else 'The historical before-fix screenshot was unavailable; the original failing run remains linked below.'
-              ),
           }
           for key, value in replacements.items():
               template = template.replace(key, value)
@@ -325,7 +303,6 @@ jobs:
               'postgres_concurrency_test_passed': race_passed,
               'postgres_concurrency_test_failures': race_failures,
               'postgres_concurrency_test_skipped': race_skipped,
-              'historical_failure_screenshot_included': has_before_fix,
               'successful_screenshots': successful,
           }
           (visuals / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')

@@ -23,11 +23,11 @@ async function readApiFromBrowser(page, route) {
   }, { api: API, route });
 }
 
-test('LedgerPulse browser journey persists customer, agreement and invoice lifecycle data', async ({ page }, testInfo) => {
+test('Service Agreement Manager browser journey persists customer, agreement and invoice lifecycle data', async ({ page }, testInfo) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   const unique = String(Date.now());
-  const email = 'ledgerpulse-e2e-' + unique + '@example.com';
+  const email = 'northstar-e2e-' + unique + '@example.com';
   const customerName = 'E2E HVAC Customer ' + unique;
   const locationName = 'Primary Service Site ' + unique;
   const agreementTitle = 'Annual HVAC Service ' + unique;
@@ -39,6 +39,9 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
 
   // Incorrect credentials should produce a readable error rather than a blank or stuck form.
   await page.goto('/login');
+  await expect(page.getByLabel('Email')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+  await capture(page, '02-login-page.png');
   await page.getByLabel('Email').fill('not-registered-' + unique + '@example.com');
   await page.getByLabel('Password').fill('Incorrect-Password-2026');
   const badLoginPromise = page.waitForResponse(response =>
@@ -47,14 +50,14 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   const badLogin = await badLoginPromise;
   expect(badLogin.status()).toBe(401);
   await expect(page.getByRole('alert')).toContainText(/Email or password is incorrect/i);
-  await capture(page, '02-login-invalid-credentials.png');
+  
 
   // Create a disposable test owner. The CI API runs in development mode so verification mail is not required.
   await page.goto('/register');
-  await page.getByLabel('Company name').fill('LedgerPulse E2E Company ' + unique);
-  await page.getByLabel('Your name').fill('LedgerPulse E2E Owner');
+  await page.getByLabel('Company name').fill('Northstar Facility Services');
+  await page.getByLabel('Your name').fill('Morgan Ellis');
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill('LedgerPulse-Test-Pass!2026');
+  await page.getByLabel('Password').fill('Northstar-Test-Pass!2026');
   const registerPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/auth/register' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create workspace', exact: true }).click();
@@ -127,7 +130,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByLabel('Agreement title').fill(agreementTitle);
   await page.getByLabel('Service name').fill('Preventive HVAC maintenance');
   await page.getByLabel('Unit price').fill('120.00');
-  await page.getByLabel('Terms').fill('Synthetic end-to-end test agreement; no real service is scheduled.');
+  await page.getByLabel('Terms').fill('Quarterly preventive maintenance includes system inspection, filter service, operating checks and a written service summary.');
   const agreementPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/agreements' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create draft agreement', exact: true }).click();
@@ -148,7 +151,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   expect((await proposedResponse.json()).status).toBe('proposed');
 
   await page.getByRole('button', { name: 'Record acceptance', exact: true }).click();
-  await page.getByLabel('Accepted by').fill('LedgerPulse E2E Owner');
+  await page.getByLabel('Accepted by').fill('Morgan Ellis');
   const acceptPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/agreements/' + agreement.id + '/accept' &&
     response.request().method() === 'POST');
@@ -272,10 +275,10 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await page.getByRole('button', { name: 'Team', exact: true }).click();
   await page.getByRole('button', { name: 'Add team member', exact: true }).click();
-  const technicianEmail = 'ledgerpulse-tech-' + unique + '@example.com';
+  const technicianEmail = 'northstar-tech-' + unique + '@example.com';
   await page.getByLabel('Full name').fill('E2E Technician');
   await page.getByLabel('Email').fill(technicianEmail);
-  await page.getByLabel('Password').fill('LedgerPulse-Team-Member!2026');
+  await page.getByLabel('Password').fill('Northstar-Team-Member!2026');
   await page.getByLabel('Role').selectOption('technician');
   const technicianPromise = page.waitForResponse(response => response.url() === API + '/api/v1/users' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create member', exact: true }).click();
@@ -406,7 +409,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
     'Duplicate Import Customer ' + unique + ',commercial,dup-' + unique + '@example.com,5550102,First duplicate\n' +
     'Duplicate Import Customer ' + unique + ',commercial,dup-' + unique + '@example.com,5550103,Duplicate row';
   const previewPromise = page.waitForResponse(response => response.url() === API + '/api/v1/customers/imports/preview' && response.request().method() === 'POST');
-  await page.locator('input[type=file]').setInputFiles({ name: 'ledgerpulse-customers.csv', mimeType: 'text/csv', buffer: Buffer.from(importCsv) });
+  await page.locator('input[type=file]').setInputFiles({ name: 'northstar-customers.csv', mimeType: 'text/csv', buffer: Buffer.from(importCsv) });
   const previewResponse = await previewPromise;
   expect(previewResponse.status()).toBe(200);
   const previewBody = await previewResponse.json();
@@ -464,12 +467,12 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.goto('/integrations');
   await expect(page.getByRole('heading', { name: 'Delivery & integrations' })).toBeVisible();
   await page.getByRole('button', { name: 'Queue email', exact: true }).click();
-  const queuedEmail = 'ledgerpulse-notify-' + unique + '@example.com';
-  const emailSubject = 'LedgerPulse E2E notification ' + unique;
+  const queuedEmail = 'northstar-notify-' + unique + '@example.com';
+  const emailSubject = 'Preventive maintenance visit confirmation';
   await page.getByRole('dialog').last().getByLabel('Recipient').fill(queuedEmail);
   await page.getByRole('dialog').last().getByLabel('Subject').fill(emailSubject);
   await page.getByRole('dialog').last().getByLabel('Event type').fill('manual.notification');
-  await page.getByRole('dialog').last().getByLabel('Body').fill('Synthetic notification queued by the LedgerPulse end-to-end test.');
+  await page.getByRole('dialog').last().getByLabel('Body').fill('Your quarterly HVAC preventive-maintenance visit is scheduled. Reply to your service coordinator to arrange access.');
   const notificationPromise = page.waitForResponse(response => response.url() === API + '/api/v1/notifications' && response.request().method() === 'POST');
   await page.getByRole('dialog').last().getByRole('button', { name: 'Queue email', exact: true }).click();
   const notificationResponse = await notificationPromise;
@@ -487,13 +490,14 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByRole('dialog').last().getByLabel('Phone').fill('+15550101010');
   await page.getByRole('dialog').last().getByLabel('Event type').fill('manual.notification');
   await page.getByRole('dialog').last().getByLabel('Message').fill('Synthetic SMS provider configuration check.');
+  await capture(page, '16-sms-message-composer.png');
   const smsPromise = page.waitForResponse(response => response.url() === API + '/api/v1/sms' && response.request().method() === 'POST');
   await page.getByRole('dialog').last().getByRole('button', { name: 'Queue SMS', exact: true }).click();
   const smsResponse = await smsPromise;
   expect(smsResponse.status()).toBe(503);
   expect((await smsResponse.json()).error.code).toBe('sms_provider_disabled');
   await expect(page.getByRole('dialog').last().getByText('SMS delivery is not configured')).toBeVisible();
-  await capture(page, '16-sms-provider-disabled.png');
+
 
   // Maintenance plan generation is idempotent for the same scheduled occurrence.
   await page.goto('/operations');
@@ -600,10 +604,10 @@ test('API rejects cross-tenant record access and untrusted origins', async ({ re
   const register = async (name) => {
     const response = await request.post(API + '/api/v1/auth/register', {
       data: {
-        company_name: 'LedgerPulse Isolation ' + name + ' ' + unique,
+        company_name: 'Northstar Isolation ' + name + ' ' + unique,
         full_name: 'Isolation Test ' + name,
-        email: 'ledgerpulse-isolation-' + name + '-' + unique + '@example.com',
-        password: 'LedgerPulse-Isolation!2026',
+        email: 'northstar-isolation-' + name + '-' + unique + '@example.com',
+        password: 'Northstar-Isolation!2026',
       },
     });
     expect(response.status()).toBe(201);
@@ -639,10 +643,10 @@ test('API lifecycle covers partial payments, refunds, credits, voiding, attachme
   const unique = String(Date.now());
   const registered = await request.post(API + '/api/v1/auth/register', {
     data: {
-      company_name: 'LedgerPulse Adjustment QA ' + unique,
+      company_name: 'Northstar Adjustment QA ' + unique,
       full_name: 'Adjustment QA Owner',
-      email: 'ledgerpulse-adjustment-' + unique + '@example.com',
-      password: 'LedgerPulse-Adjustment!2026',
+      email: 'northstar-adjustment-' + unique + '@example.com',
+      password: 'Northstar-Adjustment!2026',
     },
   });
   expect(registered.status()).toBe(201);
@@ -739,7 +743,7 @@ test('API lifecycle covers partial payments, refunds, credits, voiding, attachme
   expect(voidResponse.status()).toBe(200);
   expect((await voidResponse.json()).status).toBe('void');
 
-  const attachmentContent = 'LedgerPulse attachment lifecycle ' + unique;
+  const attachmentContent = 'Northstar attachment lifecycle ' + unique;
   const attachmentUpload = await request.post(API + '/api/v1/attachments/customer/' + customer.id, {
     headers,
     multipart: {
@@ -762,7 +766,7 @@ test('API lifecycle covers partial payments, refunds, credits, voiding, attachme
 
   const webhookCreate = await request.post(API + '/api/v1/webhooks', {
     headers,
-    data: { name: 'QA webhook ' + unique, url: 'https://example.com/ledgerpulse-hook', events: ['customer.created', 'payment.received'] },
+    data: { name: 'QA webhook ' + unique, url: 'https://example.com/northstar-hook', events: ['customer.created', 'payment.received'] },
   });
   expect(webhookCreate.status()).toBe(201);
   const webhook = await webhookCreate.json();
