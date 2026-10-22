@@ -1,7 +1,7 @@
 {
-  "tested_source_commit": "78a16feb1f83dae345f5d956b496ff2cf998a05e",
-  "workflow_run_id": 39759730515,
-  "workflow_run_url": "https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39759730515",
+  "tested_source_commit": "96e937307dbf210fb1ca1ab233ed9601e2dc9c3c",
+  "workflow_run_id": 39760207588,
+  "workflow_run_url": "https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39760207588",
   "browser": "Chromium / Playwright",
   "viewport": "1280x720 (homepage screenshot is full page)",
   "successful_screenshot_count": 25,
