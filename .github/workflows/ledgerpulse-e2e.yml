@@ -215,6 +215,7 @@ jobs:
           source_sha = os.environ["SOURCE_SHA"]
           run_id = os.environ["SOURCE_RUN_ID"]
           repository = os.environ["SOURCE_REPOSITORY"]
+          repository_url = f"https://github.com/{repository}"
           run_url = f"https://github.com/{repository}/actions/runs/{run_id}"
           result = json.loads(Path(".visual-evidence/test-results/e2e-results.json").read_text(encoding="utf-8"))
           stats = result.get("stats", {})
