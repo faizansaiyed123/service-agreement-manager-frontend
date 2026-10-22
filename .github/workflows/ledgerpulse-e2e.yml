@@ -76,6 +76,17 @@ jobs:
         working-directory: backend
         run: python -m alembic upgrade head
 
+      - name: Check migrated PostgreSQL schema against ORM
+        working-directory: backend
+        run: python -m alembic check
+
+      - name: Run the complete backend test suite and lint
+        working-directory: backend
+        run: |
+          mkdir -p ../test-results
+          python -m ruff check .
+          python -m pytest -ra --junitxml=../test-results/backend-pytest.xml
+
       - name: Start API and wait for database readiness
         run: |
           cd backend
@@ -199,6 +210,7 @@ jobs:
           python - <<'PY'
           import json
           import os
+          import xml.etree.ElementTree as ET
           from pathlib import Path
 
           root = Path('docs/testing')
@@ -214,6 +226,20 @@ jobs:
           passed = int(stats.get('expected', 0))
           failed = int(stats.get('unexpected', 0))
           skipped = int(stats.get('skipped', 0))
+
+          backend_result_path = Path('.visual-evidence/test-results/backend-pytest.xml')
+          if not backend_result_path.exists():
+              raise SystemExit('Backend JUnit XML is missing; refusing to publish incomplete evidence.')
+          backend_root = ET.parse(backend_result_path).getroot()
+          backend_suites = [backend_root] if backend_root.tag == 'testsuite' else list(backend_root.iter('testsuite'))
+          backend_total = sum(int(suite.attrib.get('tests', '0')) for suite in backend_suites)
+          backend_failures = sum(
+              int(suite.attrib.get('failures', '0')) + int(suite.attrib.get('errors', '0'))
+              for suite in backend_suites
+          )
+          backend_skipped = sum(int(suite.attrib.get('skipped', '0')) for suite in backend_suites)
+          backend_passed = max(0, backend_total - backend_failures - backend_skipped)
+
           screenshot_names = sorted(p.name for p in visuals.glob('*.png'))
           successful = [name for name in screenshot_names if not name.startswith('00-')]
           has_before_fix = '00-before-fix-agreement-acceptance-modal.png' in screenshot_names
@@ -228,6 +254,9 @@ jobs:
               '__E2E_FAILED__': str(failed),
               '__E2E_SKIPPED__': str(skipped),
               '__CHECKPOINT_COUNT__': str(len(successful)),
+              '__BACKEND_PASSED__': str(backend_passed),
+              '__BACKEND_FAILED__': str(backend_failures),
+              '__BACKEND_SKIPPED__': str(backend_skipped),
               '__FAILURE_SCREENSHOT_NOTE__': (
                   'The original before-fix screenshot is embedded below and clearly marked as a failed historical state.'
                   if has_before_fix
@@ -248,6 +277,9 @@ jobs:
               '__E2E_FAILED__': str(failed),
               '__E2E_SKIPPED__': str(skipped),
               '__CHECKPOINT_COUNT__': str(len(successful)),
+              '__BACKEND_PASSED__': str(backend_passed),
+              '__BACKEND_FAILED__': str(backend_failures),
+              '__BACKEND_SKIPPED__': str(backend_skipped),
           }
           for key, value in report_replacements.items():
               report_template = report_template.replace(key, value)
@@ -260,6 +292,10 @@ jobs:
               'browser': 'Chromium / Playwright',
               'viewport': '1280x720 (homepage screenshot is full page)',
               'successful_screenshot_count': len(successful),
+              'backend_test_count': backend_total,
+              'backend_test_passed': backend_passed,
+              'backend_test_failures_or_errors': backend_failures,
+              'backend_test_skipped': backend_skipped,
               'historical_failure_screenshot_included': has_before_fix,
               'successful_screenshots': successful,
           }
