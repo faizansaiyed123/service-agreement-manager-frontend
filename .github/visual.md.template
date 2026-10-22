@@ -73,16 +73,11 @@ Invoices start as drafts, can be issued and paid, and retain their balance and a
 </tr>
 </tbody></table>
 
-## 6. Review business activity and data
+## 6. Review business activity and export data
 
-Reporting and import/export workflows help the business review its records and move data in a reusable format.
+Reports help the business review operational activity and take structured data into other tools.
 
-<table><tbody>
-<tr>
-<td width="50%" valign="top"><h3>Reports and CSV exports</h3><a href="docs/testing/visuals/13-reports-and-csv-exports.png"><img src="docs/testing/visuals/13-reports-and-csv-exports.png" alt="Reports page and downloaded CSV exports" width="100%"/></a><p>Operational and finance reports provide downloadable CSV exports for further analysis and record keeping.</p></td>
-<td width="50%" valign="top"><h3>Customer import recovery</h3><a href="docs/testing/visuals/14-customer-import-recovery.png"><img src="docs/testing/visuals/14-customer-import-recovery.png" alt="Customer import preview, correction and completion" width="100%"/></a><p>The guided import path helps resolve invalid rows rather than requiring the user to restart the entire import.</p></td>
-</tr>
-</tbody></table>
+<table><tbody><tr><td width="100%" align="center" valign="top"><a href="docs/testing/visuals/13-reports-and-csv-exports.png"><img src="docs/testing/visuals/13-reports-and-csv-exports.png" alt="Reports page and downloaded CSV exports" width="85%"/></a><p>Operational and finance reports provide downloadable CSV exports for further analysis and record keeping.</p></td></tr></tbody></table>
 
 ## 7. Notifications and integrations
 
