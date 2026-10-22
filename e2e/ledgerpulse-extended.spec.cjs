@@ -200,7 +200,7 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
 
   const webhookResponse = await browserApi(page, 'POST', '/webhooks', {
     name: 'QA endpoint ' + unique,
-    url: 'https://example.com/ledgerpulse-test-webhook',
+    url: 'https://example.com/service-agreement-manager-hook',
     events: ['customer.created', 'payment.received'],
   });
   expect(webhookResponse.status).toBe(201);
