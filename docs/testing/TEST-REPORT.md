@@ -1,10 +1,10 @@
 # LedgerPulse — CI End-to-End Test Report
 
 **Result:** PASS for the listed isolated browser/API journeys  
-**Tested source commit:** [`32ee9319886d6256b7fbcfc5073b2a5be65116ba`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/32ee9319886d6256b7fbcfc5073b2a5be65116ba)  
-**CI run:** [Run #39759279376](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39759279376)  
+**Tested source commit:** [`78a16feb1f83dae345f5d956b496ff2cf998a05e`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/78a16feb1f83dae345f5d956b496ff2cf998a05e)  
+**CI run:** [Run #39759730515](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39759730515)  
 **Browser tests:** 4 passed, 0 failed, 0 skipped  
-**Successful visual checkpoints:** 24  
+**Successful visual checkpoints:** 25  
 **Backend suite:** 73 passed, 0 failures/errors, 2 skipped  
 **PostgreSQL concurrency suite:** 2 passed, 0 failures/errors, 0 skipped
 

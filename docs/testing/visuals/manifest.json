@@ -1,10 +1,10 @@
 {
-  "tested_source_commit": "32ee9319886d6256b7fbcfc5073b2a5be65116ba",
-  "workflow_run_id": 39759279376,
-  "workflow_run_url": "https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39759279376",
+  "tested_source_commit": "78a16feb1f83dae345f5d956b496ff2cf998a05e",
+  "workflow_run_id": 39759730515,
+  "workflow_run_url": "https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39759730515",
   "browser": "Chromium / Playwright",
   "viewport": "1280x720 (homepage screenshot is full page)",
-  "successful_screenshot_count": 24,
+  "successful_screenshot_count": 25,
   "backend_test_count": 75,
   "backend_test_passed": 73,
   "backend_test_failures_or_errors": 0,
@@ -38,6 +38,7 @@
     "21-session-after-logout.png",
     "22-password-reset-request.png",
     "23-password-reset-invalid-token.png",
-    "24-email-verification-invalid-token.png"
+    "24-email-verification-invalid-token.png",
+    "25-invoice-adjustments-ui.png"
   ]
 }

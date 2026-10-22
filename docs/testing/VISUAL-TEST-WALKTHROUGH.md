@@ -2,8 +2,8 @@
 
 > Curated screenshots from verified browser states. The regression image is historical failure evidence and is deliberately not counted as a successful checkpoint.
 
-**Tested source commit:** [`32ee9319886d6256b7fbcfc5073b2a5be65116ba`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/32ee9319886d6256b7fbcfc5073b2a5be65116ba)  
-**CI workflow:** [Run #39759279376](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39759279376)  
+**Tested source commit:** [`78a16feb1f83dae345f5d956b496ff2cf998a05e`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/78a16feb1f83dae345f5d956b496ff2cf998a05e)  
+**CI workflow:** [Run #39759730515](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39759730515)  
 **Browser:** Chromium controlled by Playwright  
 **Application build:** Vite production build served locally against the FastAPI backend on `main`  
 **Database:** Disposable PostgreSQL 16  
@@ -13,7 +13,7 @@
 
 This report follows Sayphora's screenshot layout: journeys are ordered, images are displayed in aligned two-column HTML tables, and each screenshot has a caption describing the action and assertion. Images are captured only after checkpoint assertions succeed, except the separately labelled historical regression reproduction.
 
-**Latest automated result:** 4 Playwright tests passed, 0 failed, 0 skipped. There are 24 successful screenshot checkpoints. These checks provide broad integration evidence, **not a claim that every LedgerPulse feature or every edge case has been tested**.
+**Latest automated result:** 4 Playwright tests passed, 0 failed, 0 skipped. There are 25 successful screenshot checkpoints. These checks provide broad integration evidence, **not a claim that every LedgerPulse feature or every edge case has been tested**.
 
 **Backend verification:** 73 passed, 0 failures/errors, 2 skipped in the full backend suite; PostgreSQL concurrency checks: 2 passed, 0 failures/errors, 0 skipped. Ruff and Alembic schema-consistency checks also run.
 
@@ -78,6 +78,15 @@ The original before-fix screenshot is embedded below and clearly marked as a fai
 </tr>
 </tbody></table>
 
+### Invoice payment, refund and credit — UI trail
+
+<table><tbody>
+<tr>
+<td width="50%" valign="top"><h3>25. Payment, refund and credit history</h3><a href="visuals/25-invoice-adjustments-ui.png"><img src="visuals/25-invoice-adjustments-ui.png" alt="Invoice detail dialog showing payment, refund and credit history after UI actions" width="100%"/></a><p>The remaining payment is submitted through the invoice dialog, followed by a partial refund and a credit through their actual UI forms. API assertions then verify refund/credit idempotency, reject over-refund and excess-credit requests, and confirm a zero balance. The screenshot captures the resulting payment/refund/credit history.</p><p><em>Viewport: 1280 × 720</em></p></td>
+<td width="50%" valign="top"></td>
+</tr>
+</tbody></table>
+
 ### Recovery screens and invalid-link handling
 
 <table><tbody>
@@ -98,7 +107,7 @@ The original before-fix screenshot is embedded below and clearly marked as a fai
 | Registration / sessions / recovery | **Partial pass — extended** | UI registration, session identity/refresh, logout/revocation, protected-route redirect, password reset request UI, invalid reset-token UI, invalid email-verification UI, anti-enumeration and removal of one-time token fragments from the address bar. Valid token/password flows are covered by the backend suite; actual email inbox delivery is not tested. |
 | Customers / contacts / locations | **Partial pass** | Customer, billing-contact, location creation and CSV import/recovery. Edit/deactivate/search/pagination, attachments and all validations are not tested. |
 | Agreements | **Partial pass** | Draft → proposed → effective-today active → suspend/resume; modal defect reproduced/fixed. Cancel, renewals, expiry, future-start acceptance and all invalid transitions are not tested. |
-| Invoices / payments | **Partial pass — extended** | Draft/issue/full payment in the UI journey; extended browser-origin API flow covers partial payment, replayed idempotency key, changed-payload conflict, overpayment rejection, full settlement, refund, credit, void transition and PDF response. Tax/discount combinations, provider payment gateways and all race conditions are not all exercised. |
+| Invoices / payments | **Partial pass — extended** | Draft/issue/full payment in the original UI journey; extended UI journey records a partial then final payment, performs a partial refund and applies a credit through the invoice dialogs, and inspects the payment/refund/credit activity UI. API assertions cover idempotency replay/conflict, overpayment/refund/credit cap rejection, void transition and PDF response. Tax/discount combinations, provider payment gateways and all race conditions are not all exercised. |
 | Equipment / service catalogue | **Partial pass** | One equipment record and one service item created and persisted. Update, deactivate/decommission, delete and filter paths are not tested. |
 | Work orders / technician access | **Partial pass** | Create → assign → start → complete using owner session and synthetic technician. Technician self-login, edit/cancel, appointment validation and checklist enforcement are not tested. |
 | Maintenance plans | **Partial pass** | Plan created, order generated and repeated occurrence is idempotent. Schedule editing/deactivation and due-date/checklist edge cases are not tested. |
