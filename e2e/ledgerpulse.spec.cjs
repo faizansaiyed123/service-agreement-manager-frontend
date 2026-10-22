@@ -253,6 +253,72 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await expect(page.getByText(('e2e-' + unique).toUpperCase())).toBeVisible();
   await capture(page, '10-service-catalog-created.png');
 
+  // Create a technician from Settings, then test the complete work-order lifecycle.
+  await page.goto('/settings');
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+  await page.getByRole('button', { name: 'Team', exact: true }).click();
+  await page.getByRole('button', { name: 'Add team member', exact: true }).click();
+  const technicianEmail = 'ledgerpulse-tech-' + unique + '@example.com';
+  await page.getByLabel('Full name').fill('E2E Technician');
+  await page.getByLabel('Email').fill(technicianEmail);
+  await page.getByLabel('Password').fill('LedgerPulse-Team-Member!2026');
+  await page.getByLabel('Role').selectOption('technician');
+  const technicianPromise = page.waitForResponse(response => response.url() === API + '/api/v1/users' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Create member', exact: true }).click();
+  const technicianResponse = await technicianPromise;
+  expect(technicianResponse.status()).toBe(201);
+  const technician = await technicianResponse.json();
+  expect(technician.role).toBe('technician');
+  expect(technician.is_active).toBe(true);
+
+  await page.goto('/operations');
+  await expect(page.getByRole('heading', { name: 'Operations' })).toBeVisible();
+  await page.getByRole('button', { name: 'New work order', exact: true }).click();
+  await page.getByLabel('Customer').selectOption(customer.id);
+  await page.getByLabel('Service location').selectOption(location.id);
+  await page.getByLabel('Equipment').selectOption(equipment.id);
+  await page.getByLabel('Agreement').selectOption(agreement.id);
+  const workOrderTitle = 'E2E HVAC service visit ' + unique;
+  await page.getByLabel('Title').fill(workOrderTitle);
+  await page.getByLabel('Scheduled date').fill(new Date().toISOString().slice(0, 10));
+  await page.getByLabel('Priority').selectOption('high');
+  await page.getByLabel('Description').fill('Synthetic job; no field visit will be performed.');
+  const workOrderPromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Create work order', exact: true }).click();
+  const workOrderResponse = await workOrderPromise;
+  expect(workOrderResponse.status()).toBe(201);
+  const workOrder = await workOrderResponse.json();
+  expect(workOrder.customer_id).toBe(customer.id);
+  expect(workOrder.equipment_id).toBe(equipment.id);
+  expect(workOrder.agreement_id).toBe(agreement.id);
+  expect(workOrder.status).toBe('scheduled');
+  const workOrderRow = page.getByRole('row').filter({ hasText: workOrderTitle });
+  const assignPromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders/' + workOrder.id + '/assign' && response.request().method() === 'POST');
+  await workOrderRow.getByRole('button', { name: 'Assign', exact: true }).click();
+  await page.getByLabel('Technician').selectOption(technician.id);
+  await page.getByRole('button', { name: 'Assign technician', exact: true }).click();
+  const assignedResponse = await assignPromise;
+  expect(assignedResponse.status()).toBe(200);
+  expect((await assignedResponse.json()).status).toBe('assigned');
+  const startPromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders/' + workOrder.id + '/start' && response.request().method() === 'POST');
+  await workOrderRow.getByRole('button', { name: 'Start', exact: true }).click();
+  const startedResponse = await startPromise;
+  expect(startedResponse.status()).toBe(200);
+  expect((await startedResponse.json()).status).toBe('in_progress');
+  await workOrderRow.getByRole('button', { name: 'Complete', exact: true }).click();
+  await page.getByLabel('Completion notes').fill('End-to-end completion verified.');
+  await page.getByLabel('Technician findings').fill('Synthetic test record.');
+  await page.getByLabel('Customer sign-off').fill('E2E Test Customer');
+  const completePromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders/' + workOrder.id + '/complete' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Complete work order', exact: true }).click();
+  const completeResponse = await completePromise;
+  expect(completeResponse.status()).toBe(200);
+  const completedOrder = await completeResponse.json();
+  expect(completedOrder.status).toBe('completed');
+  expect(completedOrder.completion_notes).toBe('End-to-end completion verified.');
+  await expect(workOrderRow).toContainText('completed');
+  await capture(page, '11-work-order-completed.png');
+
   // Smoke-check every remaining protected route after authentication.
   const routes = [
     ['/operations', 'Operations'],
