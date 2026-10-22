@@ -2,8 +2,8 @@
 
 > Curated screenshots from verified browser states. The regression image is historical failure evidence and is deliberately not counted as a successful checkpoint.
 
-**Tested source commit:** [`a77a379f537d96bdca42097a1646a8b4ea0ba8d6`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/a77a379f537d96bdca42097a1646a8b4ea0ba8d6)  
-**CI workflow:** [Run #39728516824](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39728516824)  
+**Tested source commit:** [`a5e68ab30e84353f887c411c8ccce72e5f02c765`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/a5e68ab30e84353f887c411c8ccce72e5f02c765)  
+**CI workflow:** [Run #39728741159](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39728741159)  
 **Browser:** Chromium controlled by Playwright  
 **Application build:** Vite production build served locally against the FastAPI backend on `main`  
 **Database:** Disposable PostgreSQL 16  
@@ -17,7 +17,7 @@ This report follows Sayphora's screenshot layout: journeys are ordered, images a
 
 ## Regression evidence — before and after the fix
 
-The historical before-fix screenshot was unavailable; the original failing run remains linked below.
+The original before-fix screenshot is embedded below and clearly marked as a failed historical state.
 
 <table><tbody><tr>
 <td width="50%" valign="top"><h3>00. Before fix — acceptance modal remained open</h3><a href="visuals/00-before-fix-agreement-acceptance-modal.png"><img src="visuals/00-before-fix-agreement-acceptance-modal.png" alt="Historical failure screenshot showing the acceptance modal left open" width="100%"/></a><p><strong>Status: historical failure reproduction.</strong> The backend activated an agreement effective today, but the frontend acceptance modal stayed open. This image is not counted as a passed checkpoint.</p><p><em>Viewport: 1280 × 720</em></p></td>

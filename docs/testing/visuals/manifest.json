@@ -1,11 +1,11 @@
 {
-  "tested_source_commit": "a77a379f537d96bdca42097a1646a8b4ea0ba8d6",
-  "workflow_run_id": 39728516824,
-  "workflow_run_url": "https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39728516824",
+  "tested_source_commit": "a5e68ab30e84353f887c411c8ccce72e5f02c765",
+  "workflow_run_id": 39728741159,
+  "workflow_run_url": "https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39728741159",
   "browser": "Chromium / Playwright",
   "viewport": "1280x720 (homepage screenshot is full page)",
   "successful_screenshot_count": 18,
-  "historical_failure_screenshot_included": false,
+  "historical_failure_screenshot_included": true,
   "successful_screenshots": [
     "01-public-homepage.png",
     "02-login-invalid-credentials.png",
