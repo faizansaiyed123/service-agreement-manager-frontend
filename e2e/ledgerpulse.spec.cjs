@@ -40,6 +40,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   // Incorrect credentials should produce a readable error rather than a blank or stuck form.
   await page.goto('/login');
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+  await page.getByLabel('Email').fill('demo@example.com');
   await capture(page, '26-sign-in-screen.png');
   await page.getByLabel('Email').fill('not-registered-' + unique + '@example.com');
   await page.getByLabel('Password').fill('Incorrect-Password-2026');
