@@ -23,7 +23,7 @@ async function readApiFromBrowser(page, route) {
   }, { api: API, route });
 }
 
-test('LedgerPulse browser journey persists customer, agreement and invoice lifecycle data', async ({ page }, testInfo) => {
+test('Service Agreement Manager browser journey persists customer, agreement and invoice lifecycle data', async ({ page }, testInfo) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   const unique = String(Date.now());
@@ -56,7 +56,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByLabel('Company name').fill('Northstar Facility Services' + unique);
   await page.getByLabel('Your name').fill('Morgan Ellis');
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill('LedgerPulse-Test-Pass!2026');
+  await page.getByLabel('Password').fill('Northstar-Test-Pass!2026');
   const registerPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/auth/register' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create workspace', exact: true }).click();
@@ -311,7 +311,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   const technicianEmail = 'taylor.brooks+' + unique + '@example.com';
   await page.getByLabel('Full name').fill('Taylor Brooks');
   await page.getByLabel('Email').fill(technicianEmail);
-  await page.getByLabel('Password').fill('LedgerPulse-Team-Member!2026');
+  await page.getByLabel('Password').fill('Northstar-Team-Member!2026');
   await page.getByLabel('Role').selectOption('technician');
   const technicianPromise = page.waitForResponse(response => response.url() === API + '/api/v1/users' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create member', exact: true }).click();
@@ -447,7 +447,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
     'Duplicate Prospect Record' + ',commercial,dup-' + unique + '@example.com,5550102,First duplicate\n' +
     'Duplicate Prospect Record' + ',commercial,dup-' + unique + '@example.com,5550103,Duplicate row';
   const previewPromise = page.waitForResponse(response => response.url() === API + '/api/v1/customers/imports/preview' && response.request().method() === 'POST');
-  await page.locator('input[type=file]').setInputFiles({ name: 'ledgerpulse-customers.csv', mimeType: 'text/csv', buffer: Buffer.from(importCsv) });
+  await page.locator('input[type=file]').setInputFiles({ name: 'northstar-customers.csv', mimeType: 'text/csv', buffer: Buffer.from(importCsv) });
   const previewResponse = await previewPromise;
   expect(previewResponse.status()).toBe(200);
   const previewBody = await previewResponse.json();
@@ -641,10 +641,10 @@ test('API rejects cross-tenant record access and untrusted origins', async ({ re
   const register = async (name) => {
     const response = await request.post(API + '/api/v1/auth/register', {
       data: {
-        company_name: 'LedgerPulse Isolation ' + name + ' ' + unique,
+        company_name: 'Northstar Isolation ' + name + ' ' + unique,
         full_name: 'Isolation Test ' + name,
-        email: 'ledgerpulse-isolation-' + name + '-' + unique + '@example.com',
-        password: 'LedgerPulse-Isolation!2026',
+        email: 'northstar-isolation-' + name + '-' + unique + '@example.com',
+        password: 'Northstar-Isolation!2026',
       },
     });
     expect(response.status()).toBe(201);
@@ -680,10 +680,10 @@ test('API lifecycle covers partial payments, refunds, credits, voiding, attachme
   const unique = String(Date.now());
   const registered = await request.post(API + '/api/v1/auth/register', {
     data: {
-      company_name: 'LedgerPulse Adjustment QA ' + unique,
+      company_name: 'Northstar Adjustment QA ' + unique,
       full_name: 'Adjustment QA Owner',
-      email: 'ledgerpulse-adjustment-' + unique + '@example.com',
-      password: 'LedgerPulse-Adjustment!2026',
+      email: 'northstar-adjustment-' + unique + '@example.com',
+      password: 'Northstar-Adjustment!2026',
     },
   });
   expect(registered.status()).toBe(201);
@@ -780,7 +780,7 @@ test('API lifecycle covers partial payments, refunds, credits, voiding, attachme
   expect(voidResponse.status()).toBe(200);
   expect((await voidResponse.json()).status).toBe('void');
 
-  const attachmentContent = 'LedgerPulse attachment lifecycle ' + unique;
+  const attachmentContent = 'Northstar attachment lifecycle ' + unique;
   const attachmentUpload = await request.post(API + '/api/v1/attachments/customer/' + customer.id, {
     headers,
     multipart: {
@@ -803,7 +803,7 @@ test('API lifecycle covers partial payments, refunds, credits, voiding, attachme
 
   const webhookCreate = await request.post(API + '/api/v1/webhooks', {
     headers,
-    data: { name: 'QA webhook ' + unique, url: 'https://example.com/ledgerpulse-hook', events: ['customer.created', 'payment.received'] },
+    data: { name: 'QA webhook ' + unique, url: 'https://example.com/northstar-hook', events: ['customer.created', 'payment.received'] },
   });
   expect(webhookCreate.status()).toBe(201);
   const webhook = await webhookCreate.json();

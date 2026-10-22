@@ -41,12 +41,12 @@ async function capture(page, name) {
   await page.screenshot({ path: target, fullPage: true, animations: 'disabled' });
 }
 
-test('LedgerPulse extended journey verifies session security, attachments, webhooks and finance edge cases', async ({ page, request }) => {
+test('Service Agreement Manager extended journey verifies session security, attachments, webhooks and finance edge cases', async ({ page, request }) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
   const unique = String(Date.now());
   const ownerEmail = 'morgan.ellis+extended-' + unique + '@example.com';
-  const password = 'LedgerPulse-Extended!2026';
+  const password = 'Northstar-Extended!2026';
 
   // Create a browser-cookie session rather than relying on a bearer token in the UI.
   await page.goto('/register');
@@ -84,7 +84,7 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
 
   const invalidReset = await browserApi(page, 'POST', '/auth/reset-password', {
     token: 'invalid-reset-token-' + unique + '-0123456789abcdef',
-    new_password: 'LedgerPulse-New-Password!2026',
+    new_password: 'Northstar-New-Password!2026',
   });
   expect(invalidReset.status).toBe(400);
   expect(invalidReset.body.error.code).toBe('invalid_reset_token');
@@ -98,22 +98,22 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
 
   await page.goto('/reset-password');
   await expect(page.getByLabel('New password')).toBeVisible();
-  await capture(page, '23-password-reset-form.png');
+
   const uiResetToken = 'invalid-ui-reset-' + unique + '-0123456789abcdef';
   await page.goto('/reset-password#token=' + encodeURIComponent(uiResetToken));
-  await page.getByLabel('New password').fill('LedgerPulse-Reset-UI!2026');
-  await page.getByLabel('Confirm password').fill('LedgerPulse-Reset-UI!2026');
+  await page.getByLabel('New password').fill('Northstar-Reset-UI!2026');
+  await page.getByLabel('Confirm password').fill('Northstar-Reset-UI!2026');
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('');
   await page.getByRole('button', { name: 'Set new password', exact: true }).click();
   await expect(page.getByText(/password reset token is invalid or expired/i)).toBeVisible();
 
   await page.goto('/verify-email');
   await expect(page.getByLabel('Choose password')).toBeVisible();
-  await capture(page, '24-email-verification-form.png');
+
   const uiVerificationToken = 'invalid-ui-verification-' + unique + '-0123456789abcdef';
   await page.goto('/verify-email#token=' + encodeURIComponent(uiVerificationToken));
-  await page.getByLabel('Choose password').fill('LedgerPulse-Verify-UI!2026');
-  await page.getByLabel('Confirm password').fill('LedgerPulse-Verify-UI!2026');
+  await page.getByLabel('Choose password').fill('Northstar-Verify-UI!2026');
+  await page.getByLabel('Confirm password').fill('Northstar-Verify-UI!2026');
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('');
   await page.getByRole('button', { name: 'Verify email and set password', exact: true }).click();
   await expect(page.getByText(/email verification link is invalid or expired/i)).toBeVisible();
@@ -127,7 +127,7 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   expect(customerResponse.status).toBe(201);
   const customer = customerResponse.body;
 
-  const fileContent = 'LedgerPulse test attachment ' + unique;
+  const fileContent = 'Northstar test attachment ' + unique;
   const expectedSha256 = createHash('sha256').update(fileContent).digest('hex');
   const upload = await page.evaluate(async ({ api, customerId, content }) => {
     const form = new FormData();
@@ -175,8 +175,8 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
     data: {
       company_name: 'Crescent Service Partners',
       full_name: 'Casey Morgan',
-      email: 'ledgerpulse-tenant-' + unique + '@example.com',
-      password: 'LedgerPulse-Second-Tenant!2026',
+      email: 'northstar-tenant-' + unique + '@example.com',
+      password: 'Northstar-Second-Tenant!2026',
     },
   });
   expect(secondOwnerResponse.status()).toBe(201);
@@ -204,7 +204,7 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
 
   const webhookResponse = await browserApi(page, 'POST', '/webhooks', {
     name: 'Northstar service-system webhook',
-    url: 'https://example.com/ledgerpulse-test-webhook',
+    url: 'https://example.com/northstar-test-webhook',
     events: ['customer.created', 'payment.received'],
   });
   expect(webhookResponse.status).toBe(201);
