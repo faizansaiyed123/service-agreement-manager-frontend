@@ -6,6 +6,10 @@ on:
       - "qa/**"
     paths-ignore:
       - "docs/testing/**"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "docs/testing/**"
   workflow_dispatch:
 
 permissions:
