@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - "qa/**"
+    paths-ignore:
+      - "docs/testing/**"
   workflow_dispatch:
 
 permissions:
@@ -143,3 +145,134 @@ jobs:
             frontend.log
           if-no-files-found: warn
           retention-days: 14
+
+  publish-visuals:
+    if: ${{ needs.browser-api-e2e.result == 'success' && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/qa/') }}
+    needs: [browser-api-e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Check out the tested QA branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Download evidence from the successful browser run
+        uses: actions/download-artifact@v4
+        with:
+          name: ledgerpulse-e2e-evidence
+          path: .visual-evidence
+
+      - name: Publish Sayphora-style visual walkthrough and curated screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_RUN_ID: ${{ github.run_id }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_API_URL: ${{ github.api_url }}
+        run: |
+          set -euo pipefail
+          test -d .visual-evidence/test-results/screenshots
+          test -f .visual-evidence/test-results/e2e-results.json
+          mkdir -p docs/testing/visuals
+          rm -f docs/testing/visuals/*.png
+          cp .visual-evidence/test-results/screenshots/*.png docs/testing/visuals/
+
+          # Keep the original defect reproduction separate from successful checkpoints.
+          if curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${SOURCE_API_URL}/repos/${SOURCE_REPOSITORY}/actions/artifacts/12400621946/zip" \
+            -o "${RUNNER_TEMP}/ledgerpulse-first-failure.zip"; then
+            FAILURE_PATH="$(unzip -Z1 "${RUNNER_TEMP}/ledgerpulse-first-failure.zip" | grep -E '/test-failed-1\.png$' | head -n 1 || true)"
+            if [ -n "${FAILURE_PATH}" ]; then
+              unzip -p "${RUNNER_TEMP}/ledgerpulse-first-failure.zip" "${FAILURE_PATH}" > docs/testing/visuals/00-before-fix-agreement-acceptance-modal.png
+            else
+              echo "Historical test-failure screenshot was not found in the source artifact."
+            fi
+          else
+            echo "Historical failure artifact has expired or cannot be accessed; continuing with successful checkpoints."
+          fi
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path('docs/testing')
+          visuals = root / 'visuals'
+          source_sha = os.environ['SOURCE_SHA']
+          run_id = os.environ['SOURCE_RUN_ID']
+          repository = os.environ['SOURCE_REPOSITORY']
+          run_url = f'https://github.com/{repository}/actions/runs/{run_id}'
+
+          result_path = Path('.visual-evidence/test-results/e2e-results.json')
+          result = json.loads(result_path.read_text(encoding='utf-8'))
+          stats = result.get('stats', {})
+          passed = int(stats.get('expected', 0))
+          failed = int(stats.get('unexpected', 0))
+          skipped = int(stats.get('skipped', 0))
+          screenshot_names = sorted(p.name for p in visuals.glob('*.png'))
+          successful = [name for name in screenshot_names if not name.startswith('00-')]
+          has_before_fix = '00-before-fix-agreement-acceptance-modal.png' in screenshot_names
+
+          template = (root / 'VISUAL-TEST-WALKTHROUGH.template.md').read_text(encoding='utf-8')
+          replacements = {
+              '__TESTED_SHA__': source_sha,
+              '__RUN_ID__': run_id,
+              '__RUN_URL__': run_url,
+              '__REPOSITORY__': repository,
+              '__E2E_PASSED__': str(passed),
+              '__E2E_FAILED__': str(failed),
+              '__E2E_SKIPPED__': str(skipped),
+              '__CHECKPOINT_COUNT__': str(len(successful)),
+              '__FAILURE_SCREENSHOT_NOTE__': (
+                  'The original before-fix screenshot is embedded below and clearly marked as a failed historical state.'
+                  if has_before_fix
+                  else 'The historical before-fix screenshot was unavailable; the original failing run remains linked below.'
+              ),
+          }
+          for key, value in replacements.items():
+              template = template.replace(key, value)
+          (root / 'VISUAL-TEST-WALKTHROUGH.md').write_text(template, encoding='utf-8')
+
+          report_template = (root / 'TEST-REPORT.template.md').read_text(encoding='utf-8')
+          report_replacements = {
+              '__TESTED_SHA__': source_sha,
+              '__RUN_ID__': run_id,
+              '__RUN_URL__': run_url,
+              '__REPOSITORY__': repository,
+              '__E2E_PASSED__': str(passed),
+              '__E2E_FAILED__': str(failed),
+              '__E2E_SKIPPED__': str(skipped),
+              '__CHECKPOINT_COUNT__': str(len(successful)),
+          }
+          for key, value in report_replacements.items():
+              report_template = report_template.replace(key, value)
+          (root / 'TEST-REPORT.md').write_text(report_template, encoding='utf-8')
+
+          manifest = {
+              'tested_source_commit': source_sha,
+              'workflow_run_id': int(run_id),
+              'workflow_run_url': run_url,
+              'browser': 'Chromium / Playwright',
+              'viewport': '1280x720 (homepage screenshot is full page)',
+              'successful_screenshot_count': len(successful),
+              'historical_failure_screenshot_included': has_before_fix,
+              'successful_screenshots': successful,
+          }
+          (visuals / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(manifest, indent=2))
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/testing
+          if git diff --cached --quiet; then
+            echo "Curated visual evidence is already current; no commit needed."
+          else
+            git commit -m "docs(testing): publish visual evidence for ${SOURCE_SHA:0:7} [skip ci]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
