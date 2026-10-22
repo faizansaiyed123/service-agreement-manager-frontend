@@ -91,6 +91,12 @@ jobs:
           python -m ruff check .
           python -m pytest -ra --junitxml=../test-results/backend-pytest.xml
 
+      - name: Run PostgreSQL payment and maintenance concurrency tests
+        working-directory: backend
+        env:
+          RUN_PG_RACE_TESTS: "1"
+        run: python -m pytest -ra tests/test_postgres_races.py --junitxml=../test-results/backend-postgres-races.xml
+
       - name: Start API and wait for database readiness
         run: |
           cd backend
@@ -231,18 +237,27 @@ jobs:
           failed = int(stats.get('unexpected', 0))
           skipped = int(stats.get('skipped', 0))
 
-          backend_result_path = Path('.visual-evidence/test-results/backend-pytest.xml')
-          if not backend_result_path.exists():
-              raise SystemExit('Backend JUnit XML is missing; refusing to publish incomplete evidence.')
-          backend_root = ET.parse(backend_result_path).getroot()
-          backend_suites = [backend_root] if backend_root.tag == 'testsuite' else list(backend_root.iter('testsuite'))
-          backend_total = sum(int(suite.attrib.get('tests', '0')) for suite in backend_suites)
-          backend_failures = sum(
-              int(suite.attrib.get('failures', '0')) + int(suite.attrib.get('errors', '0'))
-              for suite in backend_suites
-          )
-          backend_skipped = sum(int(suite.attrib.get('skipped', '0')) for suite in backend_suites)
+          def read_junit(path: Path):
+              if not path.exists():
+                  raise SystemExit(f'Required JUnit XML is missing; refusing to publish incomplete evidence: {path}')
+              root_node = ET.parse(path).getroot()
+              suites = [root_node] if root_node.tag == 'testsuite' else list(root_node.iter('testsuite'))
+              return {
+                  'total': sum(int(suite.attrib.get('tests', '0')) for suite in suites),
+                  'failures': sum(int(suite.attrib.get('failures', '0')) + int(suite.attrib.get('errors', '0')) for suite in suites),
+                  'skipped': sum(int(suite.attrib.get('skipped', '0')) for suite in suites),
+              }
+
+          backend_stats = read_junit(Path('.visual-evidence/test-results/backend-pytest.xml'))
+          race_stats = read_junit(Path('.visual-evidence/test-results/backend-postgres-races.xml'))
+          backend_total = backend_stats['total']
+          backend_failures = backend_stats['failures']
+          backend_skipped = backend_stats['skipped']
           backend_passed = max(0, backend_total - backend_failures - backend_skipped)
+          race_total = race_stats['total']
+          race_failures = race_stats['failures']
+          race_skipped = race_stats['skipped']
+          race_passed = max(0, race_total - race_failures - race_skipped)
 
           screenshot_names = sorted(p.name for p in visuals.glob('*.png'))
           successful = [name for name in screenshot_names if not name.startswith('00-')]
@@ -261,6 +276,9 @@ jobs:
               '__BACKEND_PASSED__': str(backend_passed),
               '__BACKEND_FAILED__': str(backend_failures),
               '__BACKEND_SKIPPED__': str(backend_skipped),
+              '__PG_RACE_PASSED__': str(race_passed),
+              '__PG_RACE_FAILED__': str(race_failures),
+              '__PG_RACE_SKIPPED__': str(race_skipped),
               '__FAILURE_SCREENSHOT_NOTE__': (
                   'The original before-fix screenshot is embedded below and clearly marked as a failed historical state.'
                   if has_before_fix
@@ -284,6 +302,9 @@ jobs:
               '__BACKEND_PASSED__': str(backend_passed),
               '__BACKEND_FAILED__': str(backend_failures),
               '__BACKEND_SKIPPED__': str(backend_skipped),
+              '__PG_RACE_PASSED__': str(race_passed),
+              '__PG_RACE_FAILED__': str(race_failures),
+              '__PG_RACE_SKIPPED__': str(race_skipped),
           }
           for key, value in report_replacements.items():
               report_template = report_template.replace(key, value)
@@ -300,6 +321,10 @@ jobs:
               'backend_test_passed': backend_passed,
               'backend_test_failures_or_errors': backend_failures,
               'backend_test_skipped': backend_skipped,
+              'postgres_concurrency_test_count': race_total,
+              'postgres_concurrency_test_passed': race_passed,
+              'postgres_concurrency_test_failures': race_failures,
+              'postgres_concurrency_test_skipped': race_skipped,
               'historical_failure_screenshot_included': has_before_fix,
               'successful_screenshots': successful,
           }
