@@ -1,10 +1,10 @@
 # Service Agreement Manager — CI End-to-End Test Report
 
 **Result:** PASS for the listed isolated browser/API journeys  
-**Tested source commit:** [`ed8cf14918e96c4138ab3f2b82dc89e1d2a20be0`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/ed8cf14918e96c4138ab3f2b82dc89e1d2a20be0)  
-**CI run:** [Run #39760398718](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39760398718)  
+**Tested source commit:** [`06fa33406e003305a3d84dabf5f915576b6eaab9`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/06fa33406e003305a3d84dabf5f915576b6eaab9)  
+**CI run:** [Run #39769464959](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39769464959)  
 **Browser tests:** 4 passed, 0 failed, 0 skipped  
-**Successful visual checkpoints:** 25  
+**Successful visual checkpoints:** 23  
 **Backend suite:** 73 passed, 0 failures/errors, 2 skipped  
 **PostgreSQL concurrency suite:** 2 passed, 0 failures/errors, 0 skipped
 

@@ -2,8 +2,8 @@
 
 > A recruiter-friendly walkthrough of Service Agreement Manager, showing successful product states across core customer, contract, billing and field-service workflows.
 
-**Tested source commit:** [`ed8cf14918e96c4138ab3f2b82dc89e1d2a20be0`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/ed8cf14918e96c4138ab3f2b82dc89e1d2a20be0)  
-**CI workflow:** [Run #39760398718](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39760398718)  
+**Tested source commit:** [`06fa33406e003305a3d84dabf5f915576b6eaab9`](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/06fa33406e003305a3d84dabf5f915576b6eaab9)  
+**CI workflow:** [Run #39769464959](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39769464959)  
 **Browser:** Chromium controlled by Playwright  
 **Application build:** Vite production build served locally against the FastAPI backend on `main`  
 **Database:** Disposable PostgreSQL 16  
@@ -13,7 +13,7 @@
 
 This report follows Sayphora's screenshot layout: journeys are ordered, images are displayed in aligned two-column HTML tables, and each screenshot has a caption describing the action and assertion. Only clean, successful product states are shown in this gallery. Negative assertions may run in CI, but error screens are never published as portfolio screenshots.
 
-**Latest automated result:** 4 Playwright tests passed, 0 failed, 0 skipped. There are 25 successful screenshot checkpoints. These checks provide broad integration evidence, **not a claim that every Service Agreement Manager feature or every edge case has been tested**.
+**Latest automated result:** 4 Playwright tests passed, 0 failed, 0 skipped. There are 23 successful screenshot checkpoints. These checks provide broad integration evidence, **not a claim that every Service Agreement Manager feature or every edge case has been tested**.
 
 **Backend verification:** 73 passed, 0 failures/errors, 2 skipped in the full backend suite; PostgreSQL concurrency checks: 2 passed, 0 failures/errors, 0 skipped. Ruff and Alembic schema-consistency checks also run.
 
@@ -22,7 +22,7 @@ This report follows Sayphora's screenshot layout: journeys are ordered, images a
 ### Application entry and customer setup
 
 <table><tbody>
-<tr><td width="50%" valign="top"><h3>01. Public homepage</h3><a href="visuals/01-public-homepage.png"><img src="visuals/01-public-homepage.png" alt="Public homepage" width="100%"/></a><p>The production-built frontend loads from the local preview server. This is a UI smoke checkpoint, not a test of every landing-page link.</p><p><em>Viewport: full page, 1280 px wide</em></p></td></tr>
+<tr><td width="50%" valign="top"><h3>01. Public homepage</h3><a href="visuals/01-public-homepage.png"><img src="visuals/01-public-homepage.png" alt="Public homepage" width="100%"/></a><p>The production-built frontend loads from the local preview server. This is a UI smoke checkpoint, not a test of every landing-page link.</p><p><em>Viewport: full page, 1280 px wide</em></p></td><td width="50%" valign="top"><h3>02. Sign-in page</h3><a href="visuals/02-login-page.png"><img src="visuals/02-login-page.png" alt="Service Agreement Manager sign-in page" width="100%"/></a><p>The sign-in form is ready for a team member to access the service workspace.</p><p><em>Viewport: 1280 × 720</em></p></td></tr>
 <tr><td width="50%" valign="top"><h3>03. Dashboard after registration</h3><a href="visuals/03-dashboard-after-registration.png"><img src="visuals/03-dashboard-after-registration.png" alt="Dashboard after account registration" width="100%"/></a><p>A synthetic owner registers, receives an authenticated response, and reaches the dashboard.</p><p><em>Viewport: 1280 × 720</em></p></td><td width="50%" valign="top"><h3>04. Customer, contact and service location</h3><a href="visuals/04-customer-and-service-location.png"><img src="visuals/04-customer-and-service-location.png" alt="Customer and service location setup" width="100%"/></a><p>The browser creates a customer, billing contact and service location, then verifies persisted association and fields.</p><p><em>Viewport: 1280 × 720</em></p></td></tr>
 </tbody></table>
 
@@ -50,7 +50,7 @@ This report follows Sayphora's screenshot layout: journeys are ordered, images a
 
 ### Notifications and provider configuration
 
-<table><tbody><tr><td width="50%" valign="top"><h3>15. Email queued</h3><a href="visuals/15-email-queued.png"><img src="visuals/15-email-queued.png" alt="Email notification queued" width="100%"/></a><p>The email request persists with queued status. No sender worker is started and no email is delivered.</p><p><em>Viewport: 1280 × 720</em></p></td></tr></tbody></table>
+<table><tbody><tr><td width="50%" valign="top"><h3>15. Email queued</h3><a href="visuals/15-email-queued.png"><img src="visuals/15-email-queued.png" alt="Email notification queued" width="100%"/></a><p>The email request persists with queued status. No sender worker is started and no email is delivered.</p><p><em>Viewport: 1280 × 720</em></p></td><td width="50%" valign="top"><h3>16. SMS message composer</h3><a href="visuals/16-sms-message-composer.png"><img src="visuals/16-sms-message-composer.png" alt="SMS message prepared for a customer notification" width="100%"/></a><p>A service coordinator can prepare a visit reminder for a customer. Provider delivery is intentionally outside the isolated CI environment.</p><p><em>Viewport: 1280 × 720</em></p></td></tr></tbody></table>
 
 ### Branch administration
 
