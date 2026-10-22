@@ -71,7 +71,7 @@ function AgreementDetail({ agreement, onClose, onUpdated }: { agreement: Agreeme
   useEffect(() => { Promise.all([endpoints.agreements.versions(agreement.id), endpoints.agreements.events(agreement.id), endpoints.agreements.renewals(agreement.id)]).then(([versionData, eventData, renewalData]) => { setVersions(versionData); setEvents(eventData); setRenewals(renewalData); }).catch(cause => setError(cause instanceof Error ? cause.message : "Unable to load agreement history")); }, [agreement.id]);
   async function run(action: string, body?: unknown) {
     setError("");
-    try { const updated = await endpoints.agreements.action(agreement.id, action, body); onUpdated(updated); if (action !== "accept") setActionOpen(null); }
+    try { const updated = await endpoints.agreements.action(agreement.id, action, body); onUpdated(updated); setActionOpen(null); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Agreement action failed"); }
   }
   return <Modal title={agreement.agreement_number} onClose={onClose}>

@@ -1,0 +1,343 @@
+name: LedgerPulse end-to-end verification
+
+on:
+  push:
+    branches:
+      - "qa/**"
+    paths-ignore:
+      - "docs/testing/**"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "docs/testing/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-api-e2e:
+    name: Production frontend + PostgreSQL API + Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: service_agreements
+          POSTGRES_USER: sam
+          POSTGRES_PASSWORD: sam_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sam -d service_agreements"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://sam:sam_test_password@localhost:5432/service_agreements
+      APP_ENV: development
+      JWT_SECRET_KEY: test-secret-with-more-than-32-characters-long
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173,http://127.0.0.1:4173
+      WEBHOOK_ENCRYPTION_KEY: test-webhook-encryption-key-2026-only
+      E2E_API_URL: http://127.0.0.1:8000
+    steps:
+      - name: Check out frontend
+        uses: actions/checkout@v4
+
+      - name: Check out backend
+        uses: actions/checkout@v4
+        with:
+          repository: faizansaiyed123/service-agreement-manager-backend
+          ref: main
+          path: backend
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install backend and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e "./backend[dev]"
+
+      - name: Install frontend dependencies and Playwright
+        run: |
+          npm ci --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund @playwright/test
+          npx playwright install --with-deps chromium
+
+      - name: Apply database migrations
+        working-directory: backend
+        run: python -m alembic upgrade head
+
+      - name: Check migrated PostgreSQL schema against ORM
+        working-directory: backend
+        run: python -m alembic check
+
+      - name: Run the complete backend test suite and lint
+        working-directory: backend
+        run: |
+          mkdir -p ../test-results
+          python -m ruff check .
+          python -m pytest -ra --junitxml=../test-results/backend-pytest.xml
+
+      - name: Run PostgreSQL payment and maintenance concurrency tests
+        working-directory: backend
+        env:
+          RUN_PG_RACE_TESTS: "1"
+        run: python -m pytest -ra tests/test_postgres_races.py --junitxml=../test-results/backend-postgres-races.xml
+
+      - name: Start API and wait for database readiness
+        run: |
+          cd backend
+          nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > ../backend.log 2>&1 &
+          cd ..
+          python - <<'PY'
+          import time
+          import urllib.error
+          import urllib.request
+
+          url = "http://127.0.0.1:8000/health/ready"
+          last_error = None
+          for _ in range(45):
+              try:
+                  with urllib.request.urlopen(url, timeout=3) as response:
+                      if response.status == 200:
+                          print(response.read().decode())
+                          break
+              except (urllib.error.URLError, TimeoutError) as exc:
+                  last_error = exc
+                  time.sleep(2)
+          else:
+              raise SystemExit(f"Backend readiness check failed: {last_error}")
+          PY
+
+      - name: Build the frontend production bundle against the local API
+        env:
+          VITE_API_URL: http://127.0.0.1:8000
+          VITE_PUBLIC_REGISTRATION: "true"
+        run: npm run build
+
+      - name: Start the production frontend preview
+        run: |
+          nohup npm run preview -- --host 127.0.0.1 --port 4173 --strictPort > frontend.log 2>&1 &
+          python - <<'PY'
+          import time
+          import urllib.error
+          import urllib.request
+
+          url = "http://127.0.0.1:4173/"
+          last_error = None
+          for _ in range(30):
+              try:
+                  with urllib.request.urlopen(url, timeout=3) as response:
+                      if response.status == 200:
+                          print(f"Frontend ready: HTTP {response.status}")
+                          break
+              except (urllib.error.URLError, TimeoutError) as exc:
+                  last_error = exc
+                  time.sleep(1)
+          else:
+              raise SystemExit(f"Frontend readiness check failed: {last_error}")
+          PY
+
+      - name: Run browser journeys and API integration checks
+        run: npx playwright test --config=playwright.e2e.config.cjs
+
+      - name: Upload screenshots, browser traces and service logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ledgerpulse-e2e-evidence
+          path: |
+            test-results/**
+            playwright-report/**
+            backend.log
+            frontend.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  publish-visuals:
+    if: ${{ needs.browser-api-e2e.result == 'success' && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/qa/') }}
+    needs: [browser-api-e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Check out the tested QA branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Download evidence from the successful browser run
+        uses: actions/download-artifact@v4
+        with:
+          name: ledgerpulse-e2e-evidence
+          path: .visual-evidence
+
+      - name: Publish Sayphora-style visual walkthrough and curated screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_RUN_ID: ${{ github.run_id }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_API_URL: ${{ github.api_url }}
+        run: |
+          set -euo pipefail
+          test -d .visual-evidence/test-results/screenshots
+          test -f .visual-evidence/test-results/e2e-results.json
+          mkdir -p docs/testing/visuals
+          rm -f docs/testing/visuals/*.png
+          cp .visual-evidence/test-results/screenshots/*.png docs/testing/visuals/
+
+          # Keep the original defect reproduction separate from successful checkpoints.
+          if curl --location --fail --silent --show-error \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${SOURCE_API_URL}/repos/${SOURCE_REPOSITORY}/actions/artifacts/12400621946/zip" \
+            -o "${RUNNER_TEMP}/ledgerpulse-first-failure.zip"; then
+            FAILURE_PATH="$(unzip -Z1 "${RUNNER_TEMP}/ledgerpulse-first-failure.zip" | grep -E '/test-failed-1\.png$' | head -n 1 || true)"
+            if [ -n "${FAILURE_PATH}" ]; then
+              unzip -p "${RUNNER_TEMP}/ledgerpulse-first-failure.zip" "${FAILURE_PATH}" > docs/testing/visuals/00-before-fix-agreement-acceptance-modal.png
+            else
+              echo "Historical test-failure screenshot was not found in the source artifact."
+            fi
+          else
+            echo "Historical failure artifact has expired or cannot be accessed; continuing with successful checkpoints."
+          fi
+
+          python - <<'PY'
+          import json
+          import os
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          root = Path('docs/testing')
+          visuals = root / 'visuals'
+          source_sha = os.environ['SOURCE_SHA']
+          run_id = os.environ['SOURCE_RUN_ID']
+          repository = os.environ['SOURCE_REPOSITORY']
+          run_url = f'https://github.com/{repository}/actions/runs/{run_id}'
+
+          result_path = Path('.visual-evidence/test-results/e2e-results.json')
+          result = json.loads(result_path.read_text(encoding='utf-8'))
+          stats = result.get('stats', {})
+          passed = int(stats.get('expected', 0))
+          failed = int(stats.get('unexpected', 0))
+          skipped = int(stats.get('skipped', 0))
+
+          def read_junit(path: Path):
+              if not path.exists():
+                  raise SystemExit(f'Required JUnit XML is missing; refusing to publish incomplete evidence: {path}')
+              root_node = ET.parse(path).getroot()
+              suites = [root_node] if root_node.tag == 'testsuite' else list(root_node.iter('testsuite'))
+              return {
+                  'total': sum(int(suite.attrib.get('tests', '0')) for suite in suites),
+                  'failures': sum(int(suite.attrib.get('failures', '0')) + int(suite.attrib.get('errors', '0')) for suite in suites),
+                  'skipped': sum(int(suite.attrib.get('skipped', '0')) for suite in suites),
+              }
+
+          backend_stats = read_junit(Path('.visual-evidence/test-results/backend-pytest.xml'))
+          race_stats = read_junit(Path('.visual-evidence/test-results/backend-postgres-races.xml'))
+          backend_total = backend_stats['total']
+          backend_failures = backend_stats['failures']
+          backend_skipped = backend_stats['skipped']
+          backend_passed = max(0, backend_total - backend_failures - backend_skipped)
+          race_total = race_stats['total']
+          race_failures = race_stats['failures']
+          race_skipped = race_stats['skipped']
+          race_passed = max(0, race_total - race_failures - race_skipped)
+
+          screenshot_names = sorted(p.name for p in visuals.glob('*.png'))
+          successful = [name for name in screenshot_names if not name.startswith('00-')]
+          has_before_fix = '00-before-fix-agreement-acceptance-modal.png' in screenshot_names
+
+          template = (root / 'VISUAL-TEST-WALKTHROUGH.template.md').read_text(encoding='utf-8')
+          replacements = {
+              '__TESTED_SHA__': source_sha,
+              '__RUN_ID__': run_id,
+              '__RUN_URL__': run_url,
+              '__REPOSITORY__': repository,
+              '__E2E_PASSED__': str(passed),
+              '__E2E_FAILED__': str(failed),
+              '__E2E_SKIPPED__': str(skipped),
+              '__CHECKPOINT_COUNT__': str(len(successful)),
+              '__BACKEND_PASSED__': str(backend_passed),
+              '__BACKEND_FAILED__': str(backend_failures),
+              '__BACKEND_SKIPPED__': str(backend_skipped),
+              '__PG_RACE_PASSED__': str(race_passed),
+              '__PG_RACE_FAILED__': str(race_failures),
+              '__PG_RACE_SKIPPED__': str(race_skipped),
+              '__FAILURE_SCREENSHOT_NOTE__': (
+                  'The original before-fix screenshot is embedded below and clearly marked as a failed historical state.'
+                  if has_before_fix
+                  else 'The historical before-fix screenshot was unavailable; the original failing run remains linked below.'
+              ),
+          }
+          for key, value in replacements.items():
+              template = template.replace(key, value)
+          (root / 'VISUAL-TEST-WALKTHROUGH.md').write_text(template, encoding='utf-8')
+
+          report_template = (root / 'TEST-REPORT.template.md').read_text(encoding='utf-8')
+          report_replacements = {
+              '__TESTED_SHA__': source_sha,
+              '__RUN_ID__': run_id,
+              '__RUN_URL__': run_url,
+              '__REPOSITORY__': repository,
+              '__E2E_PASSED__': str(passed),
+              '__E2E_FAILED__': str(failed),
+              '__E2E_SKIPPED__': str(skipped),
+              '__CHECKPOINT_COUNT__': str(len(successful)),
+              '__BACKEND_PASSED__': str(backend_passed),
+              '__BACKEND_FAILED__': str(backend_failures),
+              '__BACKEND_SKIPPED__': str(backend_skipped),
+              '__PG_RACE_PASSED__': str(race_passed),
+              '__PG_RACE_FAILED__': str(race_failures),
+              '__PG_RACE_SKIPPED__': str(race_skipped),
+          }
+          for key, value in report_replacements.items():
+              report_template = report_template.replace(key, value)
+          (root / 'TEST-REPORT.md').write_text(report_template, encoding='utf-8')
+
+          manifest = {
+              'tested_source_commit': source_sha,
+              'workflow_run_id': int(run_id),
+              'workflow_run_url': run_url,
+              'browser': 'Chromium / Playwright',
+              'viewport': '1280x720 (homepage screenshot is full page)',
+              'successful_screenshot_count': len(successful),
+              'backend_test_count': backend_total,
+              'backend_test_passed': backend_passed,
+              'backend_test_failures_or_errors': backend_failures,
+              'backend_test_skipped': backend_skipped,
+              'postgres_concurrency_test_count': race_total,
+              'postgres_concurrency_test_passed': race_passed,
+              'postgres_concurrency_test_failures': race_failures,
+              'postgres_concurrency_test_skipped': race_skipped,
+              'historical_failure_screenshot_included': has_before_fix,
+              'successful_screenshots': successful,
+          }
+          (visuals / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(manifest, indent=2))
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/testing
+          if git diff --cached --quiet; then
+            echo "Curated visual evidence is already current; no commit needed."
+          else
+            git commit -m "docs(testing): publish visual evidence for ${SOURCE_SHA:0:7} [skip ci]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
