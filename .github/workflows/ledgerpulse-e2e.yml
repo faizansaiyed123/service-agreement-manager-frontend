@@ -16,6 +16,10 @@ on:
       - "WALKTHROUGH_PROGRESS.md"
   workflow_dispatch:
 
+concurrency:
+  group: service-agreement-manager-walkthrough-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
