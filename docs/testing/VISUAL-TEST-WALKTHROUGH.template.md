@@ -15,7 +15,7 @@ This report follows Sayphora's screenshot layout: journeys are ordered, images a
 
 **Latest automated result:** __E2E_PASSED__ Playwright tests passed, __E2E_FAILED__ failed, __E2E_SKIPPED__ skipped. There are __CHECKPOINT_COUNT__ successful screenshot checkpoints. These checks provide broad integration evidence, **not a claim that every LedgerPulse feature or every edge case has been tested**.
 
-**Backend verification:** __BACKEND_PASSED__ tests passed, __BACKEND_FAILED__ failures/errors, __BACKEND_SKIPPED__ skipped across the backend test suite. The QA workflow also runs Ruff and an Alembic schema-consistency check.
+**Backend verification:** __BACKEND_PASSED__ passed, __BACKEND_FAILED__ failures/errors, __BACKEND_SKIPPED__ skipped in the full backend suite; PostgreSQL concurrency checks: __PG_RACE_PASSED__ passed, __PG_RACE_FAILED__ failures/errors, __PG_RACE_SKIPPED__ skipped. Ruff and Alembic schema-consistency checks also run.
 
 ## Regression evidence — before and after the fix
 
@@ -70,10 +70,23 @@ __FAILURE_SCREENSHOT_NOTE__
 <table><tbody>
 <tr>
 <td width="50%" valign="top"><h3>19. Invoice partial payment and reconciliation</h3><a href="visuals/19-invoice-partially-paid.png"><img src="visuals/19-invoice-partially-paid.png" alt="Invoice visible in the app during partial payment state" width="100%"/></a><p>A $100 invoice is issued and a $30 payment leaves a persisted partial balance. The same idempotency key replays the original payment; changed-content reuse and overpayment are rejected. The full API sequence then settles, refunds and credits the invoice.</p><p><em>Viewport: 1280 × 720</em></p></td>
-<td width="50%" valign="top"><h3>20. Integrations / webhook administration</h3><a href="visuals/20-integrations-webhooks.png"><img src="visuals/20-integrations-webhooks.png" alt="Integrations page after webhook endpoint verification" width="100%"/></a><p>The integrations route renders without a browser error. In the same journey the API rejects an insecure HTTP endpoint, creates a valid HTTPS endpoint, omits its secret from list responses, rotates the secret and enforces tenant isolation/deactivation. This does not represent a live delivery to an external webhook.</p><p><em>Viewport: 1280 × 720</em></p></td>
+<td width="50%" valign="top"><h3>20. Integrations / webhook administration</h3><a href="visuals/20-integrations-webhooks.png"><img src="visuals/20-integrations-webhooks.png" alt="Integrations page after webhook endpoint verification" width="100%"/></a><p>The actual integrations screen shows the newly created HTTPS endpoint as Active after API-driven secret rotation. Assertions also verify HTTP URLs are rejected, the plaintext secret is absent from list responses, tenant isolation returns 404, and deactivation succeeds after the screenshot. No external receiver is called.</p><p><em>Viewport: 1280 × 720</em></p></td>
 </tr>
 <tr>
 <td width="50%" valign="top"><h3>21. Session cleared after logout</h3><a href="visuals/21-session-after-logout.png"><img src="visuals/21-session-after-logout.png" alt="Login screen after the browser session is revoked" width="100%"/></a><p>The cookie-authenticated refresh flow succeeds before logout. Logout returns 204, the authenticated identity endpoint then returns 401, and reopening the protected dashboard routes back to login. Password-recovery responses for known and unknown addresses are also checked for indistinguishable public messages.</p><p><em>Viewport: 1280 × 720</em></p></td>
+<td width="50%" valign="top"></td>
+</tr>
+</tbody></table>
+
+### Recovery screens and invalid-link handling
+
+<table><tbody>
+<tr>
+<td width="50%" valign="top"><h3>22. Password-reset request</h3><a href="visuals/22-password-reset-request.png"><img src="visuals/22-password-reset-request.png" alt="Password reset request page showing a generic confirmation" width="100%"/></a><p>The real form accepts a synthetic email and displays the same generic response used for an unknown email; the API assertions compare both messages to guard against account enumeration.</p><p><em>Viewport: 1280 × 720</em></p></td>
+<td width="50%" valign="top"><h3>23. Invalid password-reset link</h3><a href="visuals/23-password-reset-invalid-token.png"><img src="visuals/23-password-reset-invalid-token.png" alt="Password reset page displaying an invalid-token error" width="100%"/></a><p>A deliberately invalid one-time token produces a readable error, and the fragment token is removed from the address bar before form submission.</p><p><em>Viewport: 1280 × 720</em></p></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><h3>24. Invalid email-verification link</h3><a href="visuals/24-email-verification-invalid-token.png"><img src="visuals/24-email-verification-invalid-token.png" alt="Email verification page displaying an invalid-token error" width="100%"/></a><p>An invalid verification token is rejected without activating the account; the UI clears the hash fragment and shows the backend's safe error message. Valid token/password setup is separately covered by backend tests, not by a real inbox.</p><p><em>Viewport: 1280 × 720</em></p></td>
 <td width="50%" valign="top"></td>
 </tr>
 </tbody></table>
@@ -82,7 +95,7 @@ __FAILURE_SCREENSHOT_NOTE__
 
 | Feature area | Coverage status | What was actually verified |
 |---|---|---|
-| Registration / sessions / recovery | **Partial pass — extended** | UI registration, cookie-authenticated `/auth/me`, refresh-cookie rotation, logout/revocation, protected-route redirect, password-reset anti-enumeration and invalid reset-token rejection. Valid email verification/reset depends on one-time tokens delivered through the outbox and is covered by the backend test suite; real mailbox delivery is not exercised. |
+| Registration / sessions / recovery | **Partial pass — extended** | UI registration, session identity/refresh, logout/revocation, protected-route redirect, password reset request UI, invalid reset-token UI, invalid email-verification UI, anti-enumeration and removal of one-time token fragments from the address bar. Valid token/password flows are covered by the backend suite; actual email inbox delivery is not tested. |
 | Customers / contacts / locations | **Partial pass** | Customer, billing-contact, location creation and CSV import/recovery. Edit/deactivate/search/pagination, attachments and all validations are not tested. |
 | Agreements | **Partial pass** | Draft → proposed → effective-today active → suspend/resume; modal defect reproduced/fixed. Cancel, renewals, expiry, future-start acceptance and all invalid transitions are not tested. |
 | Invoices / payments | **Partial pass — extended** | Draft/issue/full payment in the UI journey; extended browser-origin API flow covers partial payment, replayed idempotency key, changed-payload conflict, overpayment rejection, full settlement, refund, credit, void transition and PDF response. Tax/discount combinations, provider payment gateways and all race conditions are not all exercised. |
