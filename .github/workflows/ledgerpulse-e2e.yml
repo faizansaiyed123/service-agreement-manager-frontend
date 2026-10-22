@@ -181,7 +181,7 @@ jobs:
           cp .visual-evidence/test-results/screenshots/*.png docs/testing/visuals/
 
           # Keep the original defect reproduction separate from successful checkpoints.
-          if curl --fail --silent --show-error \
+          if curl --location --fail --silent --show-error \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             "${SOURCE_API_URL}/repos/${SOURCE_REPOSITORY}/actions/artifacts/12400621946/zip" \
