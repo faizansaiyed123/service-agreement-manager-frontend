@@ -93,7 +93,7 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   await page.goto('/forgot-password');
   await page.getByLabel('Email').fill(ownerEmail);
   await page.getByRole('button', { name: 'Send reset link', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText(/If an account exists/i);
+  await expect(page.locator('.success-banner')).toContainText(/If an account exists/i);
   await capture(page, '22-password-reset-request.png');
 
   const uiResetToken = 'invalid-ui-reset-' + unique + '-0123456789abcdef';
@@ -226,8 +226,9 @@ test('LedgerPulse extended journey verifies session security, attachments, webho
   await page.goto('/integrations');
   await expect(page.locator('h1').first()).toBeVisible();
   await page.getByRole('button', { name: 'Webhooks', exact: true }).click();
-  await expect(page.getByText('QA endpoint ' + unique, { exact: true })).toBeVisible();
-  await expect(page.getByText('Active', { exact: true })).toBeVisible();
+  const webhookRow = page.locator('tr').filter({ hasText: 'QA endpoint ' + unique });
+  await expect(webhookRow).toBeVisible();
+  await expect(webhookRow).toContainText('Active');
   await expect(page.locator('body')).not.toContainText('Internal Server Error');
   await capture(page, '20-integrations-webhooks.png');
 
