@@ -519,7 +519,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   const branchName = 'E2E Tampa Branch ' + unique;
   const branchCode = 'QA' + unique;
   await page.getByRole('dialog').last().getByLabel('Name').fill(branchName);
-  await page.getByRole('dialog').last().getByLabel('Code').fill(branchCode);
+  await page.getByRole('dialog').last().getByLabel('Code', { exact: true }).fill(branchCode);
   await page.getByRole('dialog').last().getByLabel('Timezone').fill('America/New_York');
   await page.getByRole('dialog').last().getByLabel('Country code').fill('US');
   await page.getByRole('dialog').last().getByLabel('City').fill('Tampa');
