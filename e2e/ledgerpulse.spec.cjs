@@ -434,9 +434,23 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await page.getByRole('dialog').last().getByLabel('Email').fill('recovered-' + unique + '@example.com');
   await page.getByRole('dialog').last().getByLabel('Phone').fill('5550104');
   await page.getByRole('dialog').last().getByLabel('Notes').fill('Corrected during E2E import recovery.');
+  const correctedRowPromise = page.waitForResponse(response =>
+    response.url().includes('/api/v1/customers/imports/' + importJob.id + '/rows/') &&
+    response.request().method() === 'PUT');
+  const refreshedJobPromise = page.waitForResponse(response =>
+    response.url() === API + '/api/v1/customers/imports/' + importJob.id &&
+    response.request().method() === 'GET');
   await page.getByRole('button', { name: 'Save corrected row', exact: true }).click();
+  const correctedRowResponse = await correctedRowPromise;
+  expect(correctedRowResponse.status()).toBe(200);
+  const refreshedJobResponse = await refreshedJobPromise;
+  expect(refreshedJobResponse.status()).toBe(200);
+  const refreshedJob = await refreshedJobResponse.json();
+  expect(refreshedJob.rows.some(row => row.status === 'pending')).toBe(true);
+  const retryButton = page.getByRole('button', { name: 'Retry pending rows', exact: true });
+  await expect(retryButton).toBeEnabled();
   const retryPromise = page.waitForResponse(response => response.url() === API + '/api/v1/customers/imports/' + importJob.id + '/retry' && response.request().method() === 'POST');
-  await page.getByRole('button', { name: 'Retry pending rows', exact: true }).click();
+  await retryButton.click();
   const retryResponse = await retryPromise;
   expect(retryResponse.status()).toBe(200);
   const recoveredJob = await retryResponse.json();
