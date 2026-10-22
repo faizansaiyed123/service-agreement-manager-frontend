@@ -2,7 +2,7 @@ const { defineConfig } = require('@playwright/test');
 
 module.exports = defineConfig({
   testDir: './e2e',
-  testMatch: 'ledgerpulse.spec.cjs',
+  testMatch: 'ledgerpulse*.spec.cjs',
   outputDir: 'test-results/playwright',
   timeout: 120000,
   expect: { timeout: 15000 },
