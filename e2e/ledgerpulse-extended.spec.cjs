@@ -46,7 +46,7 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
   page.on('pageerror', error => pageErrors.push(error.message));
   const unique = String(Date.now());
   const ownerEmail = 'morgan.ellis+extended-' + unique + '@example.com';
-  const password = 'LedgerPulse-Extended!2026';
+  const password = 'Northstar-Extended!2026';
 
   // Create a browser-cookie session rather than relying on a bearer token in the UI.
   await page.goto('/register');
@@ -84,7 +84,7 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
 
   const invalidReset = await browserApi(page, 'POST', '/auth/reset-password', {
     token: 'invalid-reset-token-' + unique + '-0123456789abcdef',
-    new_password: 'LedgerPulse-New-Password!2026',
+    new_password: 'Northstar-New-Password!2026',
   });
   expect(invalidReset.status).toBe(400);
   expect(invalidReset.body.error.code).toBe('invalid_reset_token');
@@ -98,8 +98,8 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
 
   const uiResetToken = 'invalid-ui-reset-' + unique + '-0123456789abcdef';
   await page.goto('/reset-password#token=' + encodeURIComponent(uiResetToken));
-  await page.getByLabel('New password').fill('LedgerPulse-Reset-UI!2026');
-  await page.getByLabel('Confirm password').fill('LedgerPulse-Reset-UI!2026');
+  await page.getByLabel('New password').fill('Northstar-Reset-UI!2026');
+  await page.getByLabel('Confirm password').fill('Northstar-Reset-UI!2026');
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('');
   await page.getByRole('button', { name: 'Set new password', exact: true }).click();
   await expect(page.getByText(/password reset token is invalid or expired/i)).toBeVisible();
@@ -107,8 +107,8 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
 
   const uiVerificationToken = 'invalid-ui-verification-' + unique + '-0123456789abcdef';
   await page.goto('/verify-email#token=' + encodeURIComponent(uiVerificationToken));
-  await page.getByLabel('Choose password').fill('LedgerPulse-Verify-UI!2026');
-  await page.getByLabel('Confirm password').fill('LedgerPulse-Verify-UI!2026');
+  await page.getByLabel('Choose password').fill('Northstar-Verify-UI!2026');
+  await page.getByLabel('Confirm password').fill('Northstar-Verify-UI!2026');
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('');
   await page.getByRole('button', { name: 'Verify email and set password', exact: true }).click();
   await expect(page.getByText(/email verification link is invalid or expired/i)).toBeVisible();
@@ -172,7 +172,7 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
       company_name: 'Bluewater Service Group ' + unique,
       full_name: 'Isolated Tenant Owner',
       email: 'bluewater-tenant-' + unique + '@example.com',
-      password: 'LedgerPulse-Second-Tenant!2026',
+      password: 'Northstar-Second-Tenant!2026',
     },
   });
   expect(secondOwnerResponse.status()).toBe(201);
