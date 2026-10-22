@@ -481,6 +481,80 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   await expect(page.getByRole('dialog').last().getByText('SMS delivery is not configured')).toBeVisible();
   await capture(page, '16-sms-provider-disabled.png');
 
+  // Maintenance plan generation is idempotent for the same scheduled occurrence.
+  await page.goto('/operations');
+  await page.getByRole('button', { name: 'Maintenance', exact: true }).click();
+  await page.getByRole('button', { name: 'New maintenance plan', exact: true }).click();
+  await page.getByRole('dialog').last().getByLabel('Customer').selectOption(customer.id);
+  await page.getByRole('dialog').last().getByLabel('Service location').selectOption(location.id);
+  const maintenanceName = 'E2E Quarterly HVAC Plan ' + unique;
+  await page.getByRole('dialog').last().getByLabel('Frequency').selectOption('quarterly');
+  await page.getByRole('dialog').last().getByLabel('Plan name').fill(maintenanceName);
+  await page.getByRole('dialog').last().getByLabel('Next due date').fill(new Date().toISOString().slice(0, 10));
+  await page.getByRole('dialog').last().getByLabel('Checklist, one item per line').fill('Inspect HVAC filter\nVerify thermostat');
+  const maintenancePromise = page.waitForResponse(response => response.url() === API + '/api/v1/maintenance/schedules' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Create maintenance plan', exact: true }).click();
+  const maintenanceResponse = await maintenancePromise;
+  expect(maintenanceResponse.status()).toBe(201);
+  const maintenanceSchedule = await maintenanceResponse.json();
+  expect(maintenanceSchedule.customer_id).toBe(customer.id);
+  expect(maintenanceSchedule.checklist_template).toEqual(['Inspect HVAC filter', 'Verify thermostat']);
+  const maintenanceRow = page.getByRole('row').filter({ hasText: maintenanceName });
+  const generatePromise = page.waitForResponse(response => response.url() === API + '/api/v1/maintenance/schedules/' + maintenanceSchedule.id + '/generate' && response.request().method() === 'POST');
+  await maintenanceRow.getByRole('button', { name: 'Generate order', exact: true }).click();
+  const generateResponse = await generatePromise;
+  expect(generateResponse.status()).toBe(201);
+  const generatedWorkOrder = await generateResponse.json();
+  expect(generatedWorkOrder.maintenance_schedule_id).toBe(maintenanceSchedule.id);
+  expect(generatedWorkOrder.status).toBe('scheduled');
+  const duplicateGeneratePromise = page.waitForResponse(response => response.url() === API + '/api/v1/maintenance/schedules/' + maintenanceSchedule.id + '/generate' && response.request().method() === 'POST');
+  await maintenanceRow.getByRole('button', { name: 'Generate order', exact: true }).click();
+  const duplicateGenerateResponse = await duplicateGeneratePromise;
+  expect(duplicateGenerateResponse.status()).toBe(200);
+  expect((await duplicateGenerateResponse.json()).id).toBe(generatedWorkOrder.id);
+
+  // Branch administration: create a branch, persist business hours and add a closure date.
+  await page.getByRole('button', { name: 'Branches', exact: true }).click();
+  await page.getByRole('button', { name: 'Add branch', exact: true }).click();
+  const branchName = 'E2E Tampa Branch ' + unique;
+  const branchCode = 'QA' + unique;
+  await page.getByRole('dialog').last().getByLabel('Name').fill(branchName);
+  await page.getByRole('dialog').last().getByLabel('Code').fill(branchCode);
+  await page.getByRole('dialog').last().getByLabel('Timezone').fill('America/New_York');
+  await page.getByRole('dialog').last().getByLabel('Country code').fill('US');
+  await page.getByRole('dialog').last().getByLabel('City').fill('Tampa');
+  await page.getByRole('dialog').last().getByLabel('Email').fill('branch-' + unique + '@example.com');
+  const branchCreatePromise = page.waitForResponse(response => response.url() === API + '/api/v1/branches' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Create branch', exact: true }).click();
+  const branchCreateResponse = await branchCreatePromise;
+  expect(branchCreateResponse.status()).toBe(201);
+  const newBranch = await branchCreateResponse.json();
+  expect(newBranch.name).toBe(branchName);
+  expect(newBranch.code).toBe(branchCode);
+  const branchRow = page.getByRole('row').filter({ hasText: branchName });
+  await branchRow.getByRole('button', { name: 'Open', exact: true }).click();
+  const mondayHours = page.locator('.hours-row').filter({ hasText: 'Monday' });
+  await expect(mondayHours).toBeVisible();
+  await mondayHours.getByLabel('Closed').check();
+  const hoursPromise = page.waitForResponse(response => response.url() === API + '/api/v1/branches/' + newBranch.id + '/business-hours' && response.request().method() === 'PUT');
+  await page.getByRole('dialog').last().getByRole('button', { name: 'Save hours', exact: true }).click();
+  const hoursResponse = await hoursPromise;
+  expect(hoursResponse.status()).toBe(200);
+  const savedHours = await hoursResponse.json();
+  expect(savedHours).toHaveLength(7);
+  expect(savedHours.find(item => item.day_of_week === 0).is_closed).toBe(true);
+  const closureName = 'E2E maintenance closure ' + unique;
+  await page.getByRole('dialog').last().getByLabel('Date').fill(new Date().toISOString().slice(0, 10));
+  await page.getByRole('dialog').last().getByLabel('Name').fill(closureName);
+  await page.getByRole('dialog').last().getByLabel('Description').fill('Synthetic closure record for integration testing.');
+  const closurePromise = page.waitForResponse(response => response.url() === API + '/api/v1/branches/' + newBranch.id + '/closures' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Add closure', exact: true }).click();
+  const closureResponse = await closurePromise;
+  expect(closureResponse.status()).toBe(201);
+  expect((await closureResponse.json()).name).toBe(closureName);
+  await expect(page.getByRole('dialog').last()).toContainText(closureName);
+  await capture(page, '17-branch-hours-and-closures.png');
+
   // Smoke-check every remaining protected route after authentication.
   const routes = [
     ['/operations', 'Operations'],
