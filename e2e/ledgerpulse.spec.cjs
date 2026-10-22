@@ -512,6 +512,7 @@ test('LedgerPulse browser journey persists customer, agreement and invoice lifec
   const duplicateGenerateResponse = await duplicateGeneratePromise;
   expect(duplicateGenerateResponse.status()).toBe(200);
   expect((await duplicateGenerateResponse.json()).id).toBe(generatedWorkOrder.id);
+  await capture(page, '18-maintenance-plan-generation.png');
 
   // Branch administration: create a branch, persist business hours and add a closure date.
   await page.getByRole('button', { name: 'Branches', exact: true }).click();
