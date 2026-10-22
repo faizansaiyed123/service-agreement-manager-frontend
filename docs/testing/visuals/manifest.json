@@ -1,0 +1,29 @@
+{
+  "tested_source_commit": "a77a379f537d96bdca42097a1646a8b4ea0ba8d6",
+  "workflow_run_id": 39728516824,
+  "workflow_run_url": "https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/39728516824",
+  "browser": "Chromium / Playwright",
+  "viewport": "1280x720 (homepage screenshot is full page)",
+  "successful_screenshot_count": 18,
+  "historical_failure_screenshot_included": false,
+  "successful_screenshots": [
+    "01-public-homepage.png",
+    "02-login-invalid-credentials.png",
+    "03-dashboard-after-registration.png",
+    "04-customer-and-service-location.png",
+    "05-agreement-draft.png",
+    "06-agreement-active.png",
+    "07-invoice-draft.png",
+    "08-invoice-paid.png",
+    "09-equipment-created.png",
+    "10-service-catalog-created.png",
+    "11-work-order-completed.png",
+    "12-recurring-billing-active.png",
+    "13-reports-and-csv-exports.png",
+    "14-customer-import-recovery.png",
+    "15-email-queued.png",
+    "16-sms-provider-disabled.png",
+    "17-branch-hours-and-closures.png",
+    "18-maintenance-plan-generation.png"
+  ]
+}
