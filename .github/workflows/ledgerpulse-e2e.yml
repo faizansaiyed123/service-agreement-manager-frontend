@@ -1,15 +1,19 @@
-name: LedgerPulse end-to-end verification
+name: Service Agreement Manager walkthrough verification
 
 on:
   push:
     branches:
-      - "qa/**"
+      - main
     paths-ignore:
       - "docs/testing/**"
+      - "visual.md"
+      - "WALKTHROUGH_PROGRESS.md"
   pull_request:
     branches: [main]
     paths-ignore:
       - "docs/testing/**"
+      - "visual.md"
+      - "WALKTHROUGH_PROGRESS.md"
   workflow_dispatch:
 
 permissions:
@@ -158,7 +162,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ledgerpulse-e2e-evidence
+          name: service-agreement-manager-walkthrough-evidence
           path: |
             test-results/**
             playwright-report/**
@@ -168,14 +172,14 @@ jobs:
           retention-days: 14
 
   publish-visuals:
-    if: ${{ needs.browser-api-e2e.result == 'success' && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/qa/') }}
+    if: ${{ needs.browser-api-e2e.result == 'success' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
     needs: [browser-api-e2e]
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: write
     steps:
-      - name: Check out the tested QA branch
+      - name: Check out the tested main revision
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
@@ -183,16 +187,15 @@ jobs:
       - name: Download evidence from the successful browser run
         uses: actions/download-artifact@v4
         with:
-          name: ledgerpulse-e2e-evidence
+          name: service-agreement-manager-walkthrough-evidence
           path: .visual-evidence
 
-      - name: Publish Sayphora-style visual walkthrough and curated screenshots
+      - name: Publish the visitor walkthrough from successful screenshots
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.sha }}
           SOURCE_RUN_ID: ${{ github.run_id }}
           SOURCE_REPOSITORY: ${{ github.repository }}
-          SOURCE_API_URL: ${{ github.api_url }}
         run: |
           set -euo pipefail
           test -d .visual-evidence/test-results/screenshots
@@ -201,140 +204,181 @@ jobs:
           rm -f docs/testing/visuals/*.png
           cp .visual-evidence/test-results/screenshots/*.png docs/testing/visuals/
 
-          # Keep the original defect reproduction separate from successful checkpoints.
-          if curl --location --fail --silent --show-error \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "${SOURCE_API_URL}/repos/${SOURCE_REPOSITORY}/actions/artifacts/12400621946/zip" \
-            -o "${RUNNER_TEMP}/ledgerpulse-first-failure.zip"; then
-            FAILURE_PATH="$(unzip -Z1 "${RUNNER_TEMP}/ledgerpulse-first-failure.zip" | grep -E '/test-failed-1\.png$' | head -n 1 || true)"
-            if [ -n "${FAILURE_PATH}" ]; then
-              unzip -p "${RUNNER_TEMP}/ledgerpulse-first-failure.zip" "${FAILURE_PATH}" > docs/testing/visuals/00-before-fix-agreement-acceptance-modal.png
-            else
-              echo "Historical test-failure screenshot was not found in the source artifact."
-            fi
-          else
-            echo "Historical failure artifact has expired or cannot be accessed; continuing with successful checkpoints."
-          fi
-
           python - <<'PY'
           import json
           import os
           import xml.etree.ElementTree as ET
           from pathlib import Path
 
-          root = Path('docs/testing')
-          visuals = root / 'visuals'
-          source_sha = os.environ['SOURCE_SHA']
-          run_id = os.environ['SOURCE_RUN_ID']
-          repository = os.environ['SOURCE_REPOSITORY']
-          run_url = f'https://github.com/{repository}/actions/runs/{run_id}'
+          docs = Path("docs/testing")
+          visuals = docs / "visuals"
+          source_sha = os.environ["SOURCE_SHA"]
+          run_id = os.environ["SOURCE_RUN_ID"]
+          repository = os.environ["SOURCE_REPOSITORY"]
+          run_url = f"https://github.com/{repository}/actions/runs/{run_id}"
+          result = json.loads(Path(".visual-evidence/test-results/e2e-results.json").read_text(encoding="utf-8"))
+          stats = result.get("stats", {})
+          browser_passed = int(stats.get("expected", 0))
+          browser_failed = int(stats.get("unexpected", 0))
+          browser_skipped = int(stats.get("skipped", 0))
 
-          result_path = Path('.visual-evidence/test-results/e2e-results.json')
-          result = json.loads(result_path.read_text(encoding='utf-8'))
-          stats = result.get('stats', {})
-          passed = int(stats.get('expected', 0))
-          failed = int(stats.get('unexpected', 0))
-          skipped = int(stats.get('skipped', 0))
+          def junit_stats(file: Path):
+              if not file.exists():
+                  raise SystemExit(f"Required successful test report is missing: {file}")
+              root = ET.parse(file).getroot()
+              suites = [root] if root.tag == "testsuite" else list(root.iter("testsuite"))
+              total = sum(int(s.attrib.get("tests", "0")) for s in suites)
+              failed = sum(int(s.attrib.get("failures", "0")) + int(s.attrib.get("errors", "0")) for s in suites)
+              skipped = sum(int(s.attrib.get("skipped", "0")) for s in suites)
+              return {"total": total, "failed": failed, "skipped": skipped, "passed": max(0, total - failed - skipped)}
 
-          def read_junit(path: Path):
-              if not path.exists():
-                  raise SystemExit(f'Required JUnit XML is missing; refusing to publish incomplete evidence: {path}')
-              root_node = ET.parse(path).getroot()
-              suites = [root_node] if root_node.tag == 'testsuite' else list(root_node.iter('testsuite'))
-              return {
-                  'total': sum(int(suite.attrib.get('tests', '0')) for suite in suites),
-                  'failures': sum(int(suite.attrib.get('failures', '0')) + int(suite.attrib.get('errors', '0')) for suite in suites),
-                  'skipped': sum(int(suite.attrib.get('skipped', '0')) for suite in suites),
-              }
+          backend = junit_stats(Path(".visual-evidence/test-results/backend-pytest.xml"))
+          races = junit_stats(Path(".visual-evidence/test-results/backend-postgres-races.xml"))
+          required = [
+              "01-public-homepage.png",
+              "02-login-invalid-credentials.png",
+              "03-dashboard-after-registration.png",
+              "04-customer-and-service-location.png",
+              "05-agreement-draft.png",
+              "06-agreement-active.png",
+              "07-invoice-draft.png",
+              "08-invoice-paid.png",
+              "09-equipment-created.png",
+              "10-service-catalog-created.png",
+              "11-work-order-completed.png",
+              "12-recurring-billing-active.png",
+              "13-reports-and-csv-exports.png",
+              "14-customer-import-recovery.png",
+              "15-email-queued.png",
+              "16-sms-provider-disabled.png",
+              "17-branch-hours-and-closures.png",
+              "18-maintenance-plan-generation.png",
+              "19-invoice-partially-paid.png",
+              "20-integrations-webhooks.png",
+              "21-session-after-logout.png",
+              "22-password-reset-request.png",
+              "23-password-reset-invalid-token.png",
+              "24-email-verification-invalid-token.png",
+              "25-invoice-adjustments-ui.png",
+              "26-sign-in-screen.png",
+              "27-create-workspace-form.png",
+          ]
+          missing = [name for name in required if not (visuals / name).is_file()]
+          if missing:
+              raise SystemExit("Refusing to publish an incomplete walkthrough. Missing screenshots: " + ", ".join(missing))
+          screenshots = sorted(p.name for p in visuals.glob("*.png"))
+          unexpected = [name for name in screenshots if name not in required]
+          if unexpected:
+              raise SystemExit("Unexpected screenshot files would make the published gallery ambiguous: " + ", ".join(unexpected))
+          if browser_failed or browser_skipped:
+              raise SystemExit(f"Refusing to publish unsuccessful browser evidence: {browser_passed} passed, {browser_failed} failed, {browser_skipped} skipped")
 
-          backend_stats = read_junit(Path('.visual-evidence/test-results/backend-pytest.xml'))
-          race_stats = read_junit(Path('.visual-evidence/test-results/backend-postgres-races.xml'))
-          backend_total = backend_stats['total']
-          backend_failures = backend_stats['failures']
-          backend_skipped = backend_stats['skipped']
-          backend_passed = max(0, backend_total - backend_failures - backend_skipped)
-          race_total = race_stats['total']
-          race_failures = race_stats['failures']
-          race_skipped = race_stats['skipped']
-          race_passed = max(0, race_total - race_failures - race_skipped)
+          template_path = Path(".github/visual.md.template")
+          template = template_path.read_text(encoding="utf-8")
+          template = template.replace("__TESTED_SHA__", source_sha)
+          template = template.replace("__REPOSITORY__", repository)
+          template = template.replace("__RUN_ID__", run_id)
+          template = template.replace("__RUN_URL__", run_url)
+          Path("visual.md").write_text(template.rstrip() + "\n", encoding="utf-8")
 
-          screenshot_names = sorted(p.name for p in visuals.glob('*.png'))
-          successful = [name for name in screenshot_names if not name.startswith('00-')]
-          has_before_fix = '00-before-fix-agreement-acceptance-modal.png' in screenshot_names
+          report = f"""# Walkthrough verification record
 
-          template = (root / 'VISUAL-TEST-WALKTHROUGH.template.md').read_text(encoding='utf-8')
-          replacements = {
-              '__TESTED_SHA__': source_sha,
-              '__RUN_ID__': run_id,
-              '__RUN_URL__': run_url,
-              '__REPOSITORY__': repository,
-              '__E2E_PASSED__': str(passed),
-              '__E2E_FAILED__': str(failed),
-              '__E2E_SKIPPED__': str(skipped),
-              '__CHECKPOINT_COUNT__': str(len(successful)),
-              '__BACKEND_PASSED__': str(backend_passed),
-              '__BACKEND_FAILED__': str(backend_failures),
-              '__BACKEND_SKIPPED__': str(backend_skipped),
-              '__PG_RACE_PASSED__': str(race_passed),
-              '__PG_RACE_FAILED__': str(race_failures),
-              '__PG_RACE_SKIPPED__': str(race_skipped),
-              '__FAILURE_SCREENSHOT_NOTE__': (
-                  'The original before-fix screenshot is embedded below and clearly marked as a failed historical state.'
-                  if has_before_fix
-                  else 'The historical before-fix screenshot was unavailable; the original failing run remains linked below.'
-              ),
-          }
-          for key, value in replacements.items():
-              template = template.replace(key, value)
-          (root / 'VISUAL-TEST-WALKTHROUGH.md').write_text(template, encoding='utf-8')
+          **Result:** PASS
+          **Project source commit:** [{source_sha}]({repository_url}/commit/{source_sha})
+          **Workflow run:** [Run #{run_id}]({run_url})
+          **Browser journeys:** {browser_passed} passed, {browser_failed} failed, {browser_skipped} skipped
+          **Screenshots published:** {len(screenshots)}
+          **Backend pytest:** {backend['passed']} passed, {backend['failed']} failed/errors, {backend['skipped']} skipped
+          **PostgreSQL concurrency tests:** {races['passed']} passed, {races['failed']} failed/errors, {races['skipped']} skipped
 
-          report_template = (root / 'TEST-REPORT.template.md').read_text(encoding='utf-8')
-          report_replacements = {
-              '__TESTED_SHA__': source_sha,
-              '__RUN_ID__': run_id,
-              '__RUN_URL__': run_url,
-              '__REPOSITORY__': repository,
-              '__E2E_PASSED__': str(passed),
-              '__E2E_FAILED__': str(failed),
-              '__E2E_SKIPPED__': str(skipped),
-              '__CHECKPOINT_COUNT__': str(len(successful)),
-              '__BACKEND_PASSED__': str(backend_passed),
-              '__BACKEND_FAILED__': str(backend_failures),
-              '__BACKEND_SKIPPED__': str(backend_skipped),
-              '__PG_RACE_PASSED__': str(race_passed),
-              '__PG_RACE_FAILED__': str(race_failures),
-              '__PG_RACE_SKIPPED__': str(race_skipped),
-          }
-          for key, value in report_replacements.items():
-              report_template = report_template.replace(key, value)
-          (root / 'TEST-REPORT.md').write_text(report_template, encoding='utf-8')
+          This report records the automated evidence for the public [product walkthrough](../../visual.md). It is separate from the visitor-facing guide.
 
+          ## Coverage and limits
+
+          The browser run starts the backend from the backend repository's `main` branch, applies migrations to a disposable PostgreSQL 16 database, builds the frontend for production, serves the build locally and drives the major customer, agreement, operations, billing, reports, notifications, integration and account-recovery journeys through Chromium.
+
+          All published images come from that successful run. Test records are synthetic. Email is verified at the outbox stage, SMS follows the disabled-provider path, and external provider delivery and hosted production connectivity are not claimed as verified. This is broad product-journey evidence, not an exhaustive sign-off for every role or edge case.
+          """
+          report = report.replace("          ", "")
+          (docs / "TEST-REPORT.md").write_text(report.strip() + "\n", encoding="utf-8")
+          (docs / "VISUAL-TEST-WALKTHROUGH.md").write_text(
+              "# Product walkthrough\n\n"
+              "The visitor-facing guided tour now lives in the repository root: [visual.md](../../visual.md). "
+              "It presents the application through aligned screenshots and user-focused explanations. "
+              "The automation evidence and scope limits are recorded in [TEST-REPORT.md](TEST-REPORT.md).\n",
+              encoding="utf-8",
+          )
           manifest = {
-              'tested_source_commit': source_sha,
-              'workflow_run_id': int(run_id),
-              'workflow_run_url': run_url,
-              'browser': 'Chromium / Playwright',
-              'viewport': '1280x720 (homepage screenshot is full page)',
-              'successful_screenshot_count': len(successful),
-              'backend_test_count': backend_total,
-              'backend_test_passed': backend_passed,
-              'backend_test_failures_or_errors': backend_failures,
-              'backend_test_skipped': backend_skipped,
-              'postgres_concurrency_test_count': race_total,
-              'postgres_concurrency_test_passed': race_passed,
-              'postgres_concurrency_test_failures': race_failures,
-              'postgres_concurrency_test_skipped': race_skipped,
-              'historical_failure_screenshot_included': has_before_fix,
-              'successful_screenshots': successful,
+              "project": "Service Agreement Manager",
+              "tested_source_commit": source_sha,
+              "workflow_run_id": int(run_id),
+              "workflow_run_url": run_url,
+              "branch": "main",
+              "browser": "Chromium / Playwright",
+              "viewport": "1280x720 (full-page screenshots)",
+              "successful_screenshot_count": len(screenshots),
+              "successful_screenshots": screenshots,
+              "browser_journeys_passed": browser_passed,
+              "browser_journeys_failed": browser_failed,
+              "browser_journeys_skipped": browser_skipped,
+              "backend_test_count": backend["total"],
+              "backend_test_passed": backend["passed"],
+              "backend_test_failures_or_errors": backend["failed"],
+              "backend_test_skipped": backend["skipped"],
+              "postgres_concurrency_test_count": races["total"],
+              "postgres_concurrency_test_passed": races["passed"],
+              "postgres_concurrency_test_failures": races["failed"],
+              "postgres_concurrency_test_skipped": races["skipped"],
+              "historical_failure_screenshot_included": False,
           }
-          (visuals / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
-          print(json.dumps(manifest, indent=2))
-          PY
+          (visuals / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+          progress = f"""# Walkthrough Progress
 
+          **Project:** Service Agreement Manager
+          **State:** Complete for the recorded main-branch walkthrough run.
+          **Target branch:** `main` in frontend and backend repositories. No task branch was created.
+          **Canonical public walkthrough:** [`visual.md`](visual.md)
+          **Screenshot directory:** [`docs/testing/visuals/`](docs/testing/visuals/)
+
+          ## Completed and verified
+          - Main-branch browser workflow passed: [Run #{run_id}]({run_url}).
+          - Source revision exercised by the workflow: [{source_sha}]({repository_url}/commit/{source_sha}).
+          - Browser journey result: {browser_passed} passed, 0 failed, 0 skipped.
+          - Production frontend build and local production preview started successfully as part of the walkthrough.
+          - Backend migrations, schema consistency, Ruff, full pytest and PostgreSQL concurrency checks passed in the same run.
+          - {len(screenshots)} genuine screenshots were captured by Playwright after successful assertions and saved under `docs/testing/visuals/`.
+          - `visual.md` was generated from the walkthrough template and linked only to screenshots that exist in the successful run.
+          - Project-facing text uses Service Agreement Manager naming and guides visitors through the product's actual workflow.
+          - Error discovered during recovery walkthrough was addressed by scrubbing reset/verification tokens with layout effects before the browser paints; the passing browser run verifies that interaction.
+
+          ## Recorded verification
+          | Area | Result |
+          |---|---|
+          | Browser user journeys | {browser_passed} passed, 0 failed, 0 skipped |
+          | Backend pytest | {backend['passed']} passed, {backend['failed']} failed/errors, {backend['skipped']} skipped |
+          | PostgreSQL concurrency | {races['passed']} passed, {races['failed']} failed/errors, {races['skipped']} skipped |
+          | Screenshots and image paths | {len(screenshots)} present and checked before publication |
+          | Hosted production deployment | Not verified by this local integration run |
+          | Live SMTP/SMS/external webhook delivery | Not verified; external provider credentials and recipients are outside this run |
+
+          ## Remaining limitations
+          This run proves the isolated repository integration journey, not that the hosted site or every production provider/role is configured. The images use synthetic data. Email enqueueing, the SMS provider-disabled response and webhook endpoint management are shown without claiming actual external delivery. See [the verification record](docs/testing/TEST-REPORT.md) for scope details.
+          """
+          progress = progress.replace("          ", "")
+          Path("WALKTHROUGH_PROGRESS.md").write_text(progress.strip() + "\n", encoding="utf-8")
+          print(json.dumps({
+              "project": "Service Agreement Manager",
+              "source_commit": source_sha,
+              "workflow_run_id": int(run_id),
+              "browser_passed": browser_passed,
+              "screenshots": screenshots,
+              "backend": backend,
+              "postgres_concurrency": races,
+          }, indent=2))
+          PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/testing
+          git add docs/testing visual.md WALKTHROUGH_PROGRESS.md
           if git diff --cached --quiet; then
             echo "Curated visual evidence is already current; no commit needed."
           else
