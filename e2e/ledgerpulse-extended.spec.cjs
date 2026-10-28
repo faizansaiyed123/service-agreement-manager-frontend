@@ -53,7 +53,7 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
   await page.getByLabel('Company name').fill('Northstar Facility Services ' + unique);
   await page.getByLabel('Your name').fill('Morgan Ellis');
   await page.getByLabel('Email').fill(ownerEmail);
-  await page.getByLabel('Password').fill(password);
+  await page.getByLabel('Password', { exact: true }).fill(password);
   const registerPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/auth/register' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create workspace', exact: true }).click();
