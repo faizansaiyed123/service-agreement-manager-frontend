@@ -7,7 +7,8 @@ import { Attachments } from "../components/Attachments";
 import { Elements, useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
+const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.trim();
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 const money=(value:string,currency:string)=>new Intl.NumberFormat(undefined,{style:"currency",currency}).format(Number(value));
 const statusTone=(status:Invoice["status"])=>status==="paid"?"success":status==="void"?"danger":status==="overdue"?"danger":status==="partially_paid"?"warning":"info";
@@ -130,6 +131,10 @@ function StripeCheckoutModal({invoice,onClose,onPaid}:{invoice:Invoice;onClose:(
   const [paymentFailed, setPaymentFailed] = useState(false);
 
   useEffect(() => {
+    if (!stripePublishableKey) {
+      setBusy(false);
+      return;
+    }
     let live = true;
     setBusy(true);
     setPaymentFailed(false);
@@ -145,6 +150,7 @@ function StripeCheckoutModal({invoice,onClose,onPaid}:{invoice:Invoice;onClose:(
   }, [invoice.id]);
 
   function retry() {
+    if (!stripePublishableKey) return;
     setPaymentFailed(false);
     setError("");
     setClientSecret(null);
@@ -159,12 +165,16 @@ function StripeCheckoutModal({invoice,onClose,onPaid}:{invoice:Invoice;onClose:(
   }
 
   return <Modal title="Pay with card" onClose={onClose}>
-    <p className="muted">Test mode — use card <code>4242 4242 4242 4242</code>, any future expiry, CVV 123.</p>
-    {error && <div className="error-banner">{error}</div>}
-    {paymentFailed && <Button className="btn-primary" onClick={retry} disabled={busy}>Retry payment</Button>}
-    {busy && !clientSecret ? <div className="center-load"><Spinner/></div> : clientSecret ? <Elements stripe={stripePromise} options={{ clientSecret }}>
-      <StripeCheckoutForm invoice={invoice} idempotencyKey={idempotencyKey} onPaid={onPaid} onClose={onClose} onError={(msg: string) => { setPaymentFailed(true); setError(msg); }} />
-    </Elements> : <div className="center-load"><Spinner/></div>}
+    {!stripePublishableKey ? (
+      <div className="error-banner">Card payments are not configured for this deployment. Set <code>VITE_STRIPE_PUBLISHABLE_KEY</code> to enable Stripe checkout. You can still record an offline payment.</div>
+    ) : <>
+      <p className="muted">Test mode — use card <code>4242 4242 4242 4242</code>, any future expiry, CVV 123.</p>
+      {error && <div className="error-banner">{error}</div>}
+      {paymentFailed && <Button className="btn-primary" onClick={retry} disabled={busy}>Retry payment</Button>}
+      {busy && !clientSecret ? <div className="center-load"><Spinner/></div> : clientSecret ? <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <StripeCheckoutForm invoice={invoice} idempotencyKey={idempotencyKey} onPaid={onPaid} onClose={onClose} onError={(msg: string) => { setPaymentFailed(true); setError(msg); }} />
+      </Elements> : <div className="center-load"><Spinner/></div>}
+    </>}
   </Modal>;
 }
 
