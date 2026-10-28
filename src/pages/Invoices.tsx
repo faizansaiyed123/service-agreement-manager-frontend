@@ -4,6 +4,10 @@ import { apiBlob, endpoints } from "../lib/api";
 import type { Customer, Invoice, ServiceLocation } from "../types";
 import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner, TextArea } from "../components/ui";
 import { Attachments } from "../components/Attachments";
+import { Elements, useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
 
 const money=(value:string,currency:string)=>new Intl.NumberFormat(undefined,{style:"currency",currency}).format(Number(value));
 const statusTone=(status:Invoice["status"])=>status==="paid"?"success":status==="void"?"danger":status==="overdue"?"danger":status==="partially_paid"?"warning":"info";
@@ -36,8 +40,8 @@ type InvoiceCreditHistory = { id: string; amount: string; reason: string; create
 type InvoiceEventHistory = { id: string; event_type: string; from_status: string | null; to_status: string | null; created_at: string };
 
 function InvoiceDetail({invoice,onClose,onChanged}:{invoice:Invoice;onClose:()=>void;onChanged:()=>Promise<void>}) {
- const [tab, setTab] = useState<"summary" | "payments">("summary");
- const [action, setAction] = useState<"payment" | "refund" | "credit" | "void" | null>(null);
+const [tab, setTab] = useState<"summary" | "payments">("summary");
+  const [action, setAction] = useState<"payment" | "refund" | "credit" | "void" | "stripe" | null>(null);
  const [error, setError] = useState("");
  const [busy, setBusy] = useState(false);
  const [historyLoading, setHistoryLoading] = useState(false);
@@ -113,9 +117,123 @@ function InvoiceDetail({invoice,onClose,onChanged}:{invoice:Invoice;onClose:()=>
      </section>
    </div>}
  </div>}
- <div className="modal-actions"><Button className="btn-secondary" onClick={()=>void pdf()}>Download PDF</Button>{invoice.status==="draft"&&<Button onClick={()=>void run("issue",undefined,false)}>Issue invoice</Button>}{["issued","partially_paid"].includes(invoice.status)&&invoice.balance_due!=="0.00"&&<Button onClick={()=>setAction("payment")}>Record payment</Button>}{invoice.status!=="void"&&invoice.status!=="paid"&&<Button className="btn-secondary" onClick={()=>setAction("credit")}>Add credit</Button>}{invoice.status==="issued"&&<Button className="btn-danger" onClick={()=>setAction("void")}>Void</Button>}{invoice.amount_paid!=="0.00"&&<Button className="btn-secondary" onClick={()=>setAction("refund")}>Refund payment</Button>}</div>
- {action==="payment"&&<PaymentModal invoice={invoice} onClose={()=>setAction(null)} onSubmit={body=>void run("payments",body)}/>} {action==="credit"&&<ReasonAmountModal title="Add invoice credit" submitLabel="Apply credit" onClose={()=>setAction(null)} onSubmit={(amount,reason)=>void run("credits",{amount,reason})}/>} {action==="void"&&<ReasonModal title="Void invoice" submitLabel="Void invoice" danger onClose={()=>setAction(null)} onSubmit={reason=>void run("void",{reason},false)}/>} {action==="refund"&&<RefundModal invoice={invoice} onClose={()=>setAction(null)} onSubmit={body=>void run("payments/"+String(body.payment_id)+"/refunds",Object.fromEntries(Object.entries(body).filter(([key])=>key!=="payment_id")))}/>} {busy&&<div className="muted busy-line">Saving…</div>}
- </Modal>;
+<div className="modal-actions"><Button className="btn-secondary" onClick={()=>void pdf()}>Download PDF</Button>{invoice.status==="draft"&&<Button onClick={()=>void run("issue",undefined,false)}>Issue invoice</Button>}{["issued","partially_paid"].includes(invoice.status)&&invoice.balance_due!=="0.00"&&<><Button onClick={()=>setAction("payment")}>Record payment</Button><Button className="btn-primary" onClick={()=>setAction("stripe")}>Pay with card</Button></>}{invoice.status!=="void"&&invoice.status!=="paid"&&<Button className="btn-secondary" onClick={()=>setAction("credit")}>Add credit</Button>}{invoice.status==="issued"&&<Button className="btn-danger" onClick={()=>setAction("void")}>Void</Button>}{invoice.amount_paid!=="0.00"&&<Button className="btn-secondary" onClick={()=>setAction("refund")}>Refund payment</Button>}</div>
+  {action==="payment"&&<PaymentModal invoice={invoice} onClose={()=>setAction(null)} onSubmit={body=>void run("payments",body)}/>} {action==="stripe"&&<StripeCheckoutModal invoice={invoice} onClose={()=>setAction(null)} onPaid={async()=>{await onChanged();setAction(null)}}/>} {action==="credit"&&<ReasonAmountModal title="Add invoice credit" submitLabel="Apply credit" onClose={()=>setAction(null)} onSubmit={(amount,reason)=>void run("credits",{amount,reason})}/>} {action==="void"&&<ReasonModal title="Void invoice" submitLabel="Void invoice" danger onClose={()=>setAction(null)} onSubmit={reason=>void run("void",{reason},false)}/>} {action==="refund"&&<RefundModal invoice={invoice} onClose={()=>setAction(null)} onSubmit={body=>void run("payments/"+String(body.payment_id)+"/refunds",Object.fromEntries(Object.entries(body).filter(([key])=>key!=="payment_id")))}/>} {busy&&<div className="muted busy-line">Saving…</div>}
+  </Modal>;
+}
+
+function StripeCheckoutModal({invoice,onClose,onPaid}:{invoice:Invoice;onClose:()=>void;onPaid:()=>void}) {
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [paymentFailed, setPaymentFailed] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    setBusy(true);
+    setPaymentFailed(false);
+    setError("");
+    const key = `stripe:${invoice.id}:${crypto.randomUUID()}`;
+    setIdempotencyKey(key);
+    endpoints.stripe.createPaymentIntent(invoice.id, key).then((result: any) => {
+      if (live) setClientSecret(result.client_secret);
+    }).catch((cause: any) => {
+      if (live) setError(parseStripeError(cause));
+    }).finally(() => { if (live) setBusy(false); });
+    return () => { live = false; };
+  }, [invoice.id]);
+
+  function retry() {
+    setPaymentFailed(false);
+    setError("");
+    setClientSecret(null);
+    setBusy(true);
+    const key = `stripe:${invoice.id}:${crypto.randomUUID()}`;
+    setIdempotencyKey(key);
+    endpoints.stripe.createPaymentIntent(invoice.id, key).then((result: any) => {
+      setClientSecret(result.client_secret);
+    }).catch((cause: any) => {
+      setError(parseStripeError(cause));
+    }).finally(() => setBusy(false));
+  }
+
+  return <Modal title="Pay with card" onClose={onClose}>
+    <p className="muted">Test mode — use card <code>4242 4242 4242 4242</code>, any future expiry, CVV 123.</p>
+    {error && <div className="error-banner">{error}</div>}
+    {paymentFailed && <Button className="btn-primary" onClick={retry} disabled={busy}>Retry payment</Button>}
+    {busy && !clientSecret ? <div className="center-load"><Spinner/></div> : clientSecret ? <Elements stripe={stripePromise} options={{ clientSecret }}>
+      <StripeCheckoutForm invoice={invoice} idempotencyKey={idempotencyKey} onPaid={onPaid} onClose={onClose} onError={(msg: string) => { setPaymentFailed(true); setError(msg); }} />
+    </Elements> : <div className="center-load"><Spinner/></div>}
+  </Modal>;
+}
+
+function StripeCheckoutForm({invoice,idempotencyKey,onPaid,onClose,onError}:{invoice:Invoice;idempotencyKey:string;onPaid:()=>void;onClose:()=>void;onError:(msg:string)=>void}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [busy, setBusy] = useState(false);
+  const [cardError, setCardError] = useState("");
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setBusy(true);
+    setCardError("");
+    try {
+      const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin + "/invoices",
+        },
+        redirect: "if_required",
+      });
+      if (stripeError) {
+        setCardError(stripeError.message || "Payment failed — please try again");
+        onError(stripeError.message || "Payment failed — please try again");
+        return;
+      }
+      if (paymentIntent && paymentIntent.status === "succeeded") {
+        try {
+          await endpoints.stripe.confirmPayment(invoice.id, paymentIntent.id, idempotencyKey);
+          await onPaid();
+        } catch (confirmCause) {
+          const msg = confirmCause instanceof Error ? confirmCause.message : "Payment succeeded but recording failed — please contact support";
+          onError(msg);
+        }
+      } else if (paymentIntent && paymentIntent.status === "requires_action") {
+        onError("Additional authentication required — please complete it in the popup");
+      } else if (paymentIntent && paymentIntent.status === "processing") {
+        onError("Payment is still processing — please wait a moment");
+      } else {
+        onError("Payment could not be completed — please try again");
+      }
+    } catch (cause) {
+      const msg = cause instanceof Error ? cause.message : "Network error — please check your connection and retry";
+      onError(msg);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <form onSubmit={handleSubmit}>
+    <p>Amount: <strong>{money(invoice.balance_due || invoice.total_amount, invoice.currency)}</strong></p>
+    <p className="muted">Card details are processed by Stripe. We never see your card number.</p>
+    <div className="card-element-wrapper">
+      <PaymentElement />
+    </div>
+    <div className="modal-actions"><Button disabled={busy || !stripe}>{busy ? "Processing…" : "Pay now"}</Button><Button type="button" className="btn-secondary" onClick={onClose}>Cancel</Button></div>
+    {cardError && <div className="error-banner">{cardError}</div>}
+  </form>;
+}
+
+function parseStripeError(cause: any): string {
+  if (!cause) return "Unknown error";
+  if (cause instanceof Error) return cause.message;
+  if (typeof cause === "string") return cause;
+  if (typeof cause === "object") {
+    return cause.message || cause.detail || cause.code || "Payment failed";
+  }
+  return "Payment failed";
 }
 
 function PaymentModal({invoice,onClose,onSubmit}:{invoice:Invoice;onClose:()=>void;onSubmit:(body:unknown)=>void}){const[form,setForm]=useState({amount:invoice.balance_due,method:"bank_transfer",reference:"",notes:""});return <Modal title="Record payment" onClose={onClose}><form className="form-grid" onSubmit={e=>{e.preventDefault();onSubmit({amount:form.amount,payment_method:form.method,reference:form.reference||null,notes:form.notes||null})}}><label>Amount<Input type="number" step="0.01" min="0.01" max={invoice.balance_due} value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} required/></label><label>Payment method<Select value={form.method} onChange={e=>setForm({...form,method:e.target.value})}><option value="cash">Cash</option><option value="check">Check</option><option value="bank_transfer">Bank transfer</option><option value="card">Card</option><option value="other">Other</option></Select></label><label>Reference<Input value={form.reference} onChange={e=>setForm({...form,reference:e.target.value})}/></label><label>Notes<TextArea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})}/></label><Button>Record payment</Button></form></Modal>}
