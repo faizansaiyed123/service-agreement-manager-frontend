@@ -11,6 +11,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [form, setForm] = useState({ email: "", password: "", fullName: "", companyName: "" });
   const [error, setError] = useState("");
   const [registrationMessage, setRegistrationMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent) {
@@ -81,7 +82,14 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
               <label>Your name<Input value={form.fullName} onChange={event => setForm({ ...form, fullName: event.target.value })} minLength={2} required /></label>
             </>}
             <label>Email<Input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} autoComplete="email" required /></label>
-            <label>Password<Input type="password" value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={mode === "register" ? 12 : 1} required /></label>
+            <label>Password
+              <div style={{ display: "flex", gap: 8 }}>
+                <Input type={showPassword ? "text" : "password"} value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={mode === "register" ? 12 : 1} required />
+                <button type="button" onClick={() => setShowPassword(v => !v)} style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 18 }} aria-label={showPassword ? "Hide password" : "Show password"}>
+                  {showPassword ? "🙈" : "👁️"}
+                </button>
+              </div>
+            </label>
             {error && <div className="error-banner" role="alert">{error}</div>}
             <Button type="submit" disabled={busy}>{busy ? "Working…" : mode === "login" ? "Sign in" : "Create workspace"}</Button>
           </form>}
