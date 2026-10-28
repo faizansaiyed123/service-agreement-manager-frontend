@@ -48,6 +48,7 @@ jobs:
       JWT_SECRET_KEY: test-secret-with-more-than-32-characters-long
       CORS_ORIGINS: http://localhost:3000,http://localhost:5173,http://127.0.0.1:4173
       WEBHOOK_ENCRYPTION_KEY: test-webhook-encryption-key-2026-only
+      NOTIFICATION_ENCRYPTION_KEY: test-notification-encryption-key-2026-only
       E2E_API_URL: http://127.0.0.1:8000
     steps:
       - name: Check out frontend

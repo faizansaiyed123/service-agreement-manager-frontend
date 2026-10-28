@@ -43,7 +43,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.getByLabel('Email').fill('demo@example.com');
   await capture(page, '26-sign-in-screen.png');
   await page.getByLabel('Email').fill('not-registered-' + unique + '@example.com');
-  await page.getByLabel('Password').fill('Incorrect-Password-2026');
+  await page.locator('input[autocomplete="current-password"]').fill('Incorrect-Password-2026');
   const badLoginPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/auth/login' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
@@ -59,7 +59,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.getByLabel('Company name').fill('Northstar Mechanical Services ' + unique);
   await page.getByLabel('Your name').fill('Morgan Ellis');
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill('Northstar-Test-Pass!2026');
+  await page.locator('input[autocomplete="new-password"]').fill('Northstar-Test-Pass!2026');
   const registerPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/auth/register' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create workspace', exact: true }).click();
@@ -280,7 +280,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   const technicianEmail = 'sam-tech-' + unique + '@example.com';
   await page.getByLabel('Full name').fill('E2E Technician');
   await page.getByLabel('Email').fill(technicianEmail);
-  await page.getByLabel('Password').fill('Northstar-Team-Member!2026');
+  await page.getByRole('dialog').last().locator('input[type="password"]').fill('Northstar-Team-Member!2026');
   await page.getByLabel('Role').selectOption('technician');
   const technicianPromise = page.waitForResponse(response => response.url() === API + '/api/v1/users' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create member', exact: true }).click();
