@@ -118,7 +118,7 @@ function EquipmentModal({ item, customers, onClose, onSaved }: { item?: Equipmen
     try {
       const saved = item
         ? await endpoints.equipment.update(item.id, { ...body, status: form.status }) as Equipment
-        : await endpoints.equipment.create({ ...body, customer_id: form.customerId, service_location_id: form.locationId }) as Equipment;
+        : await endpoints.equipment.create({ ...body, customer_id: form.customerId, service_location_id: form.locationId || null }) as Equipment;
       onSaved(saved);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : `Unable to ${item ? "save" : "create"} equipment`);
