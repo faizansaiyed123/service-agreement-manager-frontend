@@ -1,4 +1,4 @@
-import type { Agreement, Branch, Company, Contact, Customer, Equipment, Invoice, RenewalOffer, ServiceCatalogItem, ServiceLocation, AuthSession, RegistrationPending, User, WorkOrder } from "../types";
+import type { Agreement, AgreementPortal, Branch, Company, Contact, Customer, Equipment, Invoice, RenewalOffer, ServiceCatalogItem, ServiceLocation, AuthSession, RegistrationPending, User, WorkOrder } from "../types";
 
 const API_URL = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8000" : "")).replace(/\/$/, "");
 const PREFIX = "/api/v1";
