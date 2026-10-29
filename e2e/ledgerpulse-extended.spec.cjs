@@ -5,6 +5,14 @@ const path = require('node:path');
 
 const API = process.env.E2E_API_URL || 'http://127.0.0.1:8000';
 
+async function chooseOption(page, control, value) {
+  await control.click();
+  const escaped = String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const option = page.locator('.select-menu .select-option[data-value="' + escaped + '"]');
+  await expect(option).toBeVisible();
+  await option.click();
+}
+
 async function browserApi(page, method, route, body, extraHeaders = {}) {
   return page.evaluate(async (args) => {
     const headers = { ...args.extraHeaders };
@@ -320,7 +328,7 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
   invoiceDialog = page.getByRole('dialog').last();
   await invoiceDialog.getByRole('button', { name: 'Refund payment', exact: true }).click();
   const refundDialog = page.getByRole('dialog').last();
-  await refundDialog.getByLabel('Payment').selectOption(partialPayment.body.id);
+  await chooseOption(page, refundDialog.getByLabel('Payment'), partialPayment.body.id);
   await refundDialog.getByLabel('Amount').fill('5.00');
   await refundDialog.getByLabel('Reason').fill('UI refund regression check');
   await refundDialog.getByRole('button', { name: 'Refund payment', exact: true }).click();
