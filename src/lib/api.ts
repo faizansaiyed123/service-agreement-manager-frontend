@@ -75,6 +75,24 @@ export async function apiBlob(path: string, retry = true): Promise<Blob> {
   return response.blob();
 }
 
+async function publicApi<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const requestPath = normalizedPath(path);
+  const headers = new Headers(options.headers);
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const response = await fetch(API_URL + PREFIX + requestPath, {
+    ...options,
+    headers,
+    credentials: "omit",
+    cache: "no-store",
+    referrerPolicy: "no-referrer",
+  });
+  if (!response.ok) throw await parseError(response);
+  if (response.status === 204) return undefined as T;
+  return await response.json() as T;
+}
+
 export const endpoints = {
   auth: {
     register: (b: unknown) => api<AuthSession | RegistrationPending>("/auth/register", { method: "POST", body: JSON.stringify(b) }),
@@ -169,6 +187,11 @@ export const endpoints = {
     deleteClosure: (id: string, closureId: string) => api<void>(`/branches/${id}/closures/${closureId}`, { method: "DELETE" }),
   },
   imports: { getCustomerImport: (id: string) => api<unknown>(`/customers/imports/${id}`), updateCustomerImportRow: (jobId: string, rowId: string, body: unknown) => api<unknown>(`/customers/imports/${jobId}/rows/${rowId}`, { method: "PUT", body: JSON.stringify(body) }), previewCustomers: (rows: unknown[]) => api<unknown>("/customers/imports/preview", { method: "POST", body: JSON.stringify({ rows }) }), createCustomers: (rows: unknown[], key?: string) => api<unknown>("/customers/imports", { method: "POST", headers: key ? { "Idempotency-Key": key } : undefined, body: JSON.stringify({ rows }) }), listCustomers: () => api<unknown[]>("/customers/imports"), retryCustomers: (id: string) => api<unknown>(`/customers/imports/${id}/retry`, { method: "POST" }) },
+  agreementPortal: {
+    get: (token: string) => publicApi<AgreementPortal>(`/agreement-portal/public/${encodeURIComponent(token)}`),
+    respond: (token: string, body: { decision: "accept" | "reject"; rejection_reason?: string | null }) => publicApi<AgreementPortal>(`/agreement-portal/public/${encodeURIComponent(token)}/respond`, { method: "POST", body: JSON.stringify(body) }),
+    send: (agreementId: string, body: { contact_id?: string | null }) => api<{ notification_id:string; notification_status:string; recipient_name:string; recipient_email:string; agreement_version:number; expires_at:string }>(`/agreement-portal/agreements/${agreementId}/send`, { method: "POST", body: JSON.stringify(body) }),
+  },
   notifications: { get: (id: string) => api<unknown>(`/notifications/${id}`), list: (q = "") => api<unknown[]>(`/notifications${q ? `?${q}` : ""}`), create: (b: unknown, key: string) => api<unknown>("/notifications", { method: "POST", headers: { "Idempotency-Key": key }, body: JSON.stringify(b) }), retry: (id: string) => api<unknown>(`/notifications/${id}/retry`, { method: "POST" }), attempts: (id: string) => api<unknown[]>(`/notifications/${id}/attempts`) },
   sms: { list: () => api<unknown[]>("/sms"), create: (b: unknown, key: string) => api<unknown>("/sms", { method: "POST", headers: { "Idempotency-Key": key }, body: JSON.stringify(b) }) },
   webhooks: { list: () => api<unknown[]>("/webhooks"), get: (id: string) => api<unknown>(`/webhooks/${id}`), create: (b: unknown) => api<unknown>("/webhooks", { method: "POST", body: JSON.stringify(b) }), update: (id: string, b: unknown) => api<unknown>(`/webhooks/${id}`, { method: "PATCH", body: JSON.stringify(b) }), rotate: (id: string) => api<unknown>(`/webhooks/${id}/rotate-secret`, { method: "POST" }), deactivate: (id: string) => api<unknown>(`/webhooks/${id}`, { method: "DELETE" }), deliveries: (id: string) => api<unknown[]>(`/webhooks/${id}/deliveries`), delivery: (id: string) => api<unknown>(`/webhooks/deliveries/${id}`), attempts: (id: string) => api<unknown[]>(`/webhooks/deliveries/${id}/attempts`), retryDelivery: (id: string) => api<unknown>(`/webhooks/deliveries/${id}/retry`, { method: "POST" }) },
