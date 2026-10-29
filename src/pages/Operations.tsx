@@ -32,6 +32,7 @@ type Schedule = {
   agreement_id: string | null;
   name: string;
   description: string | null;
+  required_skill: string | null;
   frequency: string;
   next_due_date: string;
   checklist_template: string[];
@@ -473,6 +474,12 @@ function WorkOrderDetailsModal({
             <div>
               <span className="eyebrow">Assigned technician</span>
               <strong>{current.assigned_to_user_id || "Not assigned"}</strong>
+              {current.required_skill && (
+                <>
+                  <span className="eyebrow">Required skill</span>
+                  <strong>{current.required_skill}</strong>
+                </>
+              )}
             </div>
             <div className="detail-wide">
               <span className="eyebrow">Description</span>
@@ -548,6 +555,7 @@ function WorkOrderEditModal({
       const updated = await endpoints.workOrders.update(order.id, {
         title: form.title,
         description: form.description || null,
+        required_skill: form.requiredSkill.trim() || null,
         priority: form.priority,
         scheduled_for: form.scheduledFor,
       });
@@ -572,6 +580,16 @@ function WorkOrderEditModal({
             minLength={2}
             required
           />
+        </label>
+        <label>
+          Required skill (optional)
+          <Input
+            value={form.requiredSkill}
+            onChange={(e) => setForm({ ...form, requiredSkill: e.target.value })}
+            maxLength={80}
+            placeholder="AC maintenance, refrigeration, HVAC…"
+          />
+          <span className="muted">If set, only a technician with this skill can be assigned.</span>
         </label>
         <div className="form-two">
           <label>
@@ -646,6 +664,7 @@ function WorkOrderModal({
     agreementId: "",
     title: "",
     description: "",
+    requiredSkill: "",
     priority: "normal",
     scheduledFor: new Date().toISOString().slice(0, 10),
   });
@@ -1072,6 +1091,9 @@ function SchedulesTable({
                       <span className="table-sub">
                         {schedule.description || "No description"}
                       </span>
+                      <span className="table-sub">
+                        {schedule.required_skill ? "Required skill: " + schedule.required_skill : "No skill restriction"}
+                      </span>
                     </td>
                     <td className="capitalize">
                       {schedule.frequency.replace("_", " ")}
@@ -1163,6 +1185,7 @@ function ScheduleEditModal({
   const [form, setForm] = useState({
     name: schedule.name,
     description: schedule.description || "",
+    requiredSkill: schedule.required_skill || "",
     frequency: schedule.frequency,
     nextDueDate: schedule.next_due_date,
     checklist: schedule.checklist_template.join("\n"),
@@ -1190,6 +1213,7 @@ function ScheduleEditModal({
       const updated = (await endpoints.schedules.update(schedule.id, {
         name: form.name,
         description: form.description || null,
+        required_skill: form.requiredSkill.trim() || null,
         frequency: form.frequency,
         next_due_date: form.nextDueDate,
         checklist_template: checklist,
@@ -1211,6 +1235,16 @@ function ScheduleEditModal({
     <Modal title="Edit maintenance plan" onClose={onClose}>
       <form className="form-grid" onSubmit={submit}>
         <label>
+          Required skill (optional)
+          <Input
+            value={form.requiredSkill}
+            onChange={(e) => setForm({ ...form, requiredSkill: e.target.value })}
+            maxLength={80}
+            placeholder="AC maintenance, refrigeration, HVAC…"
+          />
+          <span className="muted">Generated work orders inherit the required skill.</span>
+        </label>
+        <label>
           Plan name
           <Input
             value={form.name}
@@ -1226,6 +1260,15 @@ function ScheduleEditModal({
             onChange={(event) =>
               setForm({ ...form, description: event.target.value })
             }
+          />
+        </label>
+        <label>
+          Required skill (optional)
+          <Input
+            value={form.requiredSkill}
+            onChange={(event) => setForm({ ...form, requiredSkill: event.target.value })}
+            maxLength={80}
+            placeholder="AC maintenance, refrigeration, HVAC…"
           />
         </label>
         <div className="form-two">
@@ -1304,6 +1347,7 @@ function ScheduleModal({
     branchId: "",
     name: "",
     description: "",
+    requiredSkill: "",
     frequency: "annual",
     nextDueDate: new Date().toISOString().slice(0, 10),
     checklist: "",
@@ -1351,6 +1395,7 @@ function ScheduleModal({
           branch_id: form.branchId || null,
           name: form.name,
           description: form.description || null,
+          required_skill: form.requiredSkill.trim() || null,
           frequency: form.frequency,
           next_due_date: form.nextDueDate,
           checklist_template: form.checklist

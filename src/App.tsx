@@ -24,6 +24,8 @@ import { AgreementPortalPage } from "./pages/AgreementPortal";
 import { InvoicePortalPage } from "./pages/InvoicePortal";
 import { TechnicianPage } from "./pages/Technician";
 import { IntegrationsPage } from "./pages/Integrations";
+import { CustomerPortalInvitationPage, CustomerPortalLoginPage, CustomerPortalPage } from "./pages/CustomerPortal";
+import { TechnicianInvitationPage } from "./pages/TechnicianInvitation";
 
 const workspaceRoles: Role[] = ["owner", "admin", "manager", "billing", "staff"];
 
@@ -100,6 +102,10 @@ export default function App() {
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/agreement/:token" element={<AgreementPortalPage />} />
       <Route path="/invoice/:token" element={<InvoicePortalPage />} />
+      <Route path="/customer-portal/login" element={<CustomerPortalLoginPage />} />
+      <Route path="/customer-portal/invitation/:token" element={<CustomerPortalInvitationPage />} />
+      <Route path="/customer-portal" element={<CustomerPortalPage />} />
+      <Route path="/team/invitation/:token" element={<TechnicianInvitationPage />} />
 
       <Route element={<Protected><AppShell /></Protected>}>
         <Route path="my-work" element={<RoleGate roles={["technician"]}><TechnicianPage /></RoleGate>} />

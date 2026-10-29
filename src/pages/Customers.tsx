@@ -1,7 +1,8 @@
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { endpoints } from "../lib/api";
-import type { Contact, Customer, ServiceLocation } from "../types";
+import type { Contact, Customer, CustomerPortalAccess, ServiceLocation, User } from "../types";
 import {
   Badge,
   Button,
@@ -18,6 +19,8 @@ import { Attachments } from "../components/Attachments";
 import { useMemo } from "react";
 
 export function CustomersPage() {
+  const { user } = useOutletContext<{ user: User | null }>();
+  const canManagePortal = Boolean(user && ["owner", "admin"].includes(user.role));
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -192,6 +195,7 @@ export function CustomersPage() {
       {selected && (
         <CustomerDrawer
           customer={selected}
+          canManagePortal={canManagePortal}
           onClose={() => setSelected(null)}
           onChanged={(next) => {
             setCustomers((current) =>
@@ -301,10 +305,12 @@ function CustomerModal({
 
 function CustomerDrawer({
   customer,
+  canManagePortal,
   onClose,
   onChanged,
 }: {
   customer: Customer;
+  canManagePortal: boolean;
   onClose: () => void;
   onChanged: (customer: Customer) => void;
 }) {
@@ -316,6 +322,8 @@ function CustomerDrawer({
   const [contactOpen, setContactOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [portalAccess, setPortalAccess] = useState<CustomerPortalAccess | null>(null);
+  const [portalBusy, setPortalBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function loadDetails() {
@@ -338,6 +346,15 @@ function CustomerDrawer({
   useEffect(() => {
     void loadDetails();
   }, [customer.id]);
+
+  useEffect(() => {
+    let live = true;
+    if (!canManagePortal) return () => { live = false; };
+    endpoints.customers.portalAccess(customer.id)
+      .then((access) => { if (live) setPortalAccess(access); })
+      .catch((cause) => { if (live) setError(cause instanceof Error ? cause.message : "Unable to load portal access status"); });
+    return () => { live = false; };
+  }, [customer.id, canManagePortal]);
 
   async function deactivate() {
     if (!window.confirm("Deactivate this customer?")) return;
@@ -403,6 +420,61 @@ function CustomerDrawer({
         </div>
       )}
 
+      {canManagePortal && tab === "summary" && (
+        <Card>
+          <div className="section-action-row">
+            <div>
+              <strong>Customer portal access</strong>
+              <p className="muted">A customer record does not automatically create a login. Invite the customer only when they need online access.</p>
+            </div>
+            {portalAccess?.has_access ? (
+              <Badge tone="success">Portal enabled</Badge>
+            ) : (
+              <Badge tone={portalAccess?.invitation_status === "pending" ? "info" : "neutral"}>
+                {portalAccess?.invitation_status === "pending" ? "Invitation pending" : "No portal access"}
+              </Badge>
+            )}
+          </div>
+          <div className="section-action-row">
+            <span className="muted">
+              {portalAccess?.has_access
+                ? "This customer can sign in to view their own agreements, locations, equipment, work orders and invoices."
+                : !customer.email
+                  ? "Add an email address to the customer record before inviting them."
+                  : portalAccess?.invitation_status === "pending"
+                    ? `Invitation sent to ${portalAccess.invited_email || customer.email}.`
+                    : portalAccess?.invitation_status === "expired"
+                      ? "The previous invitation expired. Send a new one."
+                      : "The customer will set their own password from a secure, expiring invitation."}
+            </span>
+            <Button
+              className={portalAccess?.has_access ? "btn-secondary" : "btn-primary"}
+              disabled={portalBusy || customer.status !== "active" || !customer.email}
+              onClick={async () => {
+                setPortalBusy(true);
+                setError("");
+                try {
+                  if (portalAccess?.has_access) {
+                    if (!window.confirm("Disable this customer's portal access? Their customer records and invoices will be preserved.")) return;
+                    await endpoints.customers.revokePortal(customer.id);
+                    setPortalAccess({ has_access: false, invited_email: customer.email, invitation_status: "revoked" });
+                  } else {
+                    if (portalAccess?.invitation_status === "pending" && !window.confirm("Send a fresh invitation? The current pending link will be revoked.")) return;
+                    const invite = await endpoints.customers.invitePortal(customer.id);
+                    setPortalAccess({ has_access: false, invited_email: invite.email, invitation_status: "pending" });
+                  }
+                } catch (cause) {
+                  setError(cause instanceof Error ? cause.message : "Unable to update customer portal access");
+                } finally {
+                  setPortalBusy(false);
+                }
+              }}
+            >
+              {portalBusy ? "Working…" : portalAccess?.has_access ? "Disable portal access" : portalAccess?.invitation_status === "pending" ? "Resend invitation" : "Invite to portal"}
+            </Button>
+          </div>
+        </Card>
+      )}
       {tab === "contacts" && (
         <div>
           <div className="section-action-row">

@@ -16,6 +16,20 @@ import type {
   RegistrationPending,
   User,
   WorkOrder,
+  TechnicianInvitation,
+  TechnicianProfile,
+  CustomerPortalAccess,
+  CustomerPortalInvitePreview,
+  CustomerPortalMe,
+  CustomerPortalOverview,
+  CustomerPortalAgreement,
+  CustomerPortalLocation,
+  CustomerPortalEquipment,
+  CustomerPortalWorkOrder,
+  CustomerPortalInvoice,
+  CustomerPortalPaymentIntent,
+  CustomerPortalPayment,
+  CustomerPortalDocument,
 } from "../types";
 
 const API_URL = (
@@ -24,6 +38,7 @@ const API_URL = (
 ).replace(/\/$/, "");
 const PREFIX = "/api/v1";
 let refreshPromise: Promise<boolean> | null = null;
+let customerRefreshPromise: Promise<boolean> | null = null;
 
 const NO_REFRESH_RETRY = new Set([
   "/auth/login",
@@ -160,6 +175,78 @@ async function publicApi<T>(
   return (await response.json()) as T;
 }
 
+
+async function publicSessionApi<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const requestPath = normalizedPath(path);
+  const headers = new Headers(options.headers);
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const response = await fetch(API_URL + PREFIX + requestPath, {
+    ...options,
+    headers,
+    credentials: "include",
+    cache: "no-store",
+    referrerPolicy: "no-referrer",
+  });
+  if (!response.ok) throw await parseError(response);
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
+}
+
+async function refreshCustomerSession(): Promise<boolean> {
+  if (!customerRefreshPromise) {
+    customerRefreshPromise = fetch(API_URL + PREFIX + "/customer-portal/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => { customerRefreshPromise = null; });
+  }
+  return customerRefreshPromise;
+}
+
+async function customerApi<T>(
+  path: string,
+  options: RequestInit = {},
+  retry = true,
+): Promise<T> {
+  const requestPath = normalizedPath(path);
+  const headers = new Headers(options.headers);
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const response = await fetch(API_URL + PREFIX + requestPath, {
+    ...options,
+    headers,
+    credentials: "include",
+    cache: "no-store",
+    referrerPolicy: "no-referrer",
+  });
+  if (response.status === 401 && retry && !["/customer-portal/auth/login", "/customer-portal/auth/refresh"].includes(requestPath)) {
+    if (await refreshCustomerSession()) return customerApi<T>(path, options, false);
+  }
+  if (!response.ok) throw await parseError(response);
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
+}
+
+async function customerApiBlob(path: string, retry = true): Promise<Blob> {
+  const requestPath = normalizedPath(path);
+  const response = await fetch(API_URL + PREFIX + requestPath, {
+    credentials: "include",
+    cache: "no-store",
+    referrerPolicy: "no-referrer",
+  });
+  if (response.status === 401 && retry && await refreshCustomerSession()) {
+    return customerApiBlob(path, false);
+  }
+  if (!response.ok) throw await parseError(response);
+  return response.blob();
+}
+
 export const endpoints = {
   auth: {
     register: (b: unknown) =>
@@ -223,6 +310,17 @@ export const endpoints = {
         body: JSON.stringify(b),
       }),
   },
+  team: {
+    invitations: () => api<TechnicianInvitation[]>("/team/invitations"),
+    inviteTechnician: (b: unknown) => api<TechnicianInvitation>("/team/invitations", {
+      method: "POST", body: JSON.stringify(b),
+    }),
+    revokeInvitation: (id: string) => api<void>(`/team/invitations/${id}`, { method: "DELETE" }),
+    previewInvitation: (token: string) => publicApi<{ email: string; full_name: string; company_name: string; expires_at: string }>(`/team/invitations/public/${encodeURIComponent(token)}`),
+    acceptInvitation: (token: string, b: unknown) => publicSessionApi<AuthSession | { access_token: string; refresh_token: string; expires_in: number }>(`/team/invitations/public/${encodeURIComponent(token)}/accept`, { method: "POST", body: JSON.stringify(b) }),
+    technicians: () => api<TechnicianProfile[]>("/team/technicians"),
+    updateTechnician: (id: string, b: unknown) => api<TechnicianProfile>(`/team/technicians/${id}`, { method: "PATCH", body: JSON.stringify(b) }),
+  },
   customers: {
     list: (q = "") => api<Customer[]>(`/customers${q ? `?${q}` : ""}`),
     get: (id: string) => api<Customer>(`/customers/${id}`),
@@ -251,6 +349,11 @@ export const endpoints = {
         method: "POST",
         body: JSON.stringify(b),
       }),
+    portalAccess: (id: string) => api<CustomerPortalAccess>(`/customer-portal/customers/${id}/access`),
+    invitePortal: (id: string, b: unknown = {}) => api<{
+      id: string; email: string; full_name: string; status: string; expires_at: string;
+    }>(`/customer-portal/customers/${id}/invite`, { method: "POST", body: JSON.stringify(b) }),
+    revokePortal: (id: string) => api<void>(`/customer-portal/customers/${id}/access`, { method: "DELETE" }),
   },
   equipment: {
     get: (id: string) => api<Equipment>(`/equipment/${id}`),
@@ -479,6 +582,26 @@ export const endpoints = {
         method: "POST",
         body: JSON.stringify(body),
       }),
+  },
+  customerPortal: {
+    login: (b: unknown) => customerApi<AuthSession | { access_token: string; refresh_token: string; expires_in: number }>("/customer-portal/auth/login", { method: "POST", body: JSON.stringify(b) }),
+    logout: () => customerApi<void>("/customer-portal/auth/logout", { method: "POST" }),
+    me: () => customerApi<CustomerPortalMe>("/customer-portal/auth/me"),
+    previewInvitation: (token: string) => publicApi<CustomerPortalInvitePreview>(`/customer-portal/invitations/public/${encodeURIComponent(token)}`),
+    acceptInvitation: (token: string, b: unknown) => publicSessionApi<AuthSession | { access_token: string; refresh_token: string; expires_in: number }>(`/customer-portal/invitations/public/${encodeURIComponent(token)}/accept`, { method: "POST", body: JSON.stringify(b) }),
+    overview: (membershipId: string) => customerApi<CustomerPortalOverview>(`/customer-portal/memberships/${membershipId}/overview`),
+    agreements: (membershipId: string) => customerApi<CustomerPortalAgreement[]>(`/customer-portal/memberships/${membershipId}/agreements`),
+    locations: (membershipId: string) => customerApi<CustomerPortalLocation[]>(`/customer-portal/memberships/${membershipId}/locations`),
+    equipment: (membershipId: string) => customerApi<CustomerPortalEquipment[]>(`/customer-portal/memberships/${membershipId}/equipment`),
+    workOrders: (membershipId: string) => customerApi<CustomerPortalWorkOrder[]>(`/customer-portal/memberships/${membershipId}/work-orders`),
+    invoices: (membershipId: string) => customerApi<CustomerPortalInvoice[]>(`/customer-portal/memberships/${membershipId}/invoices`),
+    payments: (membershipId: string) => customerApi<CustomerPortalPayment[]>(`/customer-portal/memberships/${membershipId}/payments`),
+    documents: (membershipId: string) => customerApi<CustomerPortalDocument[]>(`/customer-portal/memberships/${membershipId}/documents`),
+    downloadDocument: (membershipId: string, attachmentId: string) => customerApiBlob(`/customer-portal/memberships/${membershipId}/documents/${attachmentId}`),
+    invoice: (membershipId: string, invoiceId: string) => customerApi<CustomerPortalInvoice>(`/customer-portal/memberships/${membershipId}/invoices/${invoiceId}`),
+    invoicePdf: (membershipId: string, invoiceId: string) => customerApiBlob(`/customer-portal/memberships/${membershipId}/invoices/${invoiceId}/pdf`),
+    createPaymentIntent: (membershipId: string, invoiceId: string) => customerApi<CustomerPortalPaymentIntent>(`/customer-portal/memberships/${membershipId}/invoices/${invoiceId}/payment-intent`, { method: "POST", body: JSON.stringify({}) }),
+    confirmPayment: (membershipId: string, invoiceId: string, paymentIntentId: string) => customerApi<CustomerPortalInvoice>(`/customer-portal/memberships/${membershipId}/invoices/${invoiceId}/confirm`, { method: "POST", body: JSON.stringify({ payment_intent_id: paymentIntentId }) }),
   },
   invoicePortal: {
     get: (token: string) =>
