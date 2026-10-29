@@ -1,6 +1,8 @@
 import type {
   Agreement,
   AgreementPortal,
+  InvoicePortal,
+  InvoicePortalPaymentIntent,
   Branch,
   Company,
   Contact,
@@ -337,6 +339,7 @@ export const endpoints = {
       }),
   },
   schedules: {
+    get: (id: string) => api<unknown>(`/maintenance/schedules/${id}`),
     list: (q = "") =>
       api<unknown[]>(`/maintenance/schedules${q ? `?${q}` : ""}`),
     create: (b: unknown) =>
@@ -475,6 +478,34 @@ export const endpoints = {
       }>(`/agreement-portal/agreements/${agreementId}/send`, {
         method: "POST",
         body: JSON.stringify(body),
+      }),
+  },
+  invoicePortal: {
+    get: (token: string) =>
+      publicApi<InvoicePortal>(
+        `/invoice-portal/public/${encodeURIComponent(token)}`,
+      ),
+    createPaymentIntent: (token: string) =>
+      publicApi<InvoicePortalPaymentIntent>(
+        `/invoice-portal/public/${encodeURIComponent(token)}/payment-intent`,
+        { method: "POST", body: JSON.stringify({}) },
+      ),
+    confirm: (token: string, paymentIntentId: string) =>
+      publicApi<InvoicePortal>(
+        `/invoice-portal/public/${encodeURIComponent(token)}/confirm`,
+        { method: "POST", body: JSON.stringify({ payment_intent_id: paymentIntentId }) },
+      ),
+    send: (invoiceId: string) =>
+      api<{
+        notification_id: string;
+        notification_status: string;
+        recipient_name: string;
+        recipient_email: string;
+        balance_due: string;
+        expires_at: string;
+      }>(`/invoice-portal/invoices/${invoiceId}/send`, {
+        method: "POST",
+        body: JSON.stringify({}),
       }),
   },
   notifications: {

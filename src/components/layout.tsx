@@ -16,10 +16,13 @@ const nav = [
   { to: "/settings", label: "Settings", icon: "⚙" },
 ];
 
+const technicianNav = [{ to: "/my-work", label: "My Work", icon: "✓" }];
+
 export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -27,10 +30,16 @@ export function AppShell() {
     endpoints.auth
       .me()
       .then((value) => {
-        if (live) setUser(value);
+        if (live) {
+          setUser(value);
+          setLoadingUser(false);
+        }
       })
       .catch(() => {
-        navigate("/login", { replace: true });
+        if (live) {
+          setLoadingUser(false);
+          navigate("/login", { replace: true });
+        }
       });
 
     return () => {
@@ -46,20 +55,25 @@ export function AppShell() {
     }
   }
 
+  if (loadingUser || !user) {
+    return <div className="center-load" role="status">Loading your workspace…</div>;
+  }
+
+  const visibleNav = user.role === "technician" ? technicianNav : nav;
   const current =
-    nav.find((item) =>
+    visibleNav.find((item) =>
       item.to === "/dashboard"
         ? location.pathname === item.to
         : location.pathname.startsWith(item.to),
-    )?.label || "Overview";
+    )?.label || (user.role === "technician" ? "My Work" : "Overview");
 
   return (
     <div className="app-shell">
       <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
         <NavLink
           className="brand"
-          to="/dashboard"
-          aria-label="Service Agreement Manager overview"
+          to={user.role === "technician" ? "/my-work" : "/dashboard"}
+          aria-label="Service Agreement Manager workspace"
         >
           <span className="brand-mark">SA</span>
           <div>
@@ -68,11 +82,11 @@ export function AppShell() {
           </div>
         </NavLink>
         <nav aria-label="Workspace navigation">
-          {nav.map((item) => (
+          {visibleNav.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === "/dashboard"}
+              end={item.to === "/dashboard" || item.to === "/my-work"}
               onClick={() => setOpen(false)}
               className={({ isActive }) =>
                 isActive ? "nav-item nav-active" : "nav-item"
