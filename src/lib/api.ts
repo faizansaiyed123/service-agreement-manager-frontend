@@ -1,4 +1,4 @@
-import type { Agreement, AgreementPortal, Branch, Company, Contact, Customer, Equipment, Invoice, RenewalOffer, ServiceCatalogItem, ServiceLocation, AuthSession, RegistrationPending, User, WorkOrder } from "../types";
+import type { Agreement, AgreementPortal, InvoicePortal, InvoicePortalPaymentIntent, Branch, Company, Contact, Customer, Equipment, Invoice, RenewalOffer, ServiceCatalogItem, ServiceLocation, AuthSession, RegistrationPending, User, WorkOrder } from "../types";
 
 const API_URL = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8000" : "")).replace(/\/$/, "");
 const PREFIX = "/api/v1";
@@ -159,6 +159,7 @@ export const endpoints = {
     action: (id: string, action: string, b?: unknown) => api<WorkOrder>(`/work-orders/${id}/${action}`, { method: "POST", ...(b === undefined ? {} : { body: JSON.stringify(b) }) }),
   },
   schedules: {
+    get: (id: string) => api<unknown>(`/maintenance/schedules/${id}`),
     list: (q = "") => api<unknown[]>(`/maintenance/schedules${q ? `?${q}` : ""}`),
     create: (b: unknown) => api<unknown>("/maintenance/schedules", { method: "POST", body: JSON.stringify(b) }),
     update: (id: string, b: unknown) => api<unknown>(`/maintenance/schedules/${id}`, { method: "PATCH", body: JSON.stringify(b) }),
@@ -191,6 +192,12 @@ export const endpoints = {
     get: (token: string) => publicApi<AgreementPortal>(`/agreement-portal/public/${encodeURIComponent(token)}`),
     respond: (token: string, body: { decision: "accept" | "reject"; acceptance_confirmation?: boolean; rejection_reason?: string | null }) => publicApi<AgreementPortal>(`/agreement-portal/public/${encodeURIComponent(token)}/respond`, { method: "POST", body: JSON.stringify(body) }),
     send: (agreementId: string, body: { contact_id?: string | null }) => api<{ notification_id:string; notification_status:string; recipient_name:string; recipient_email:string; agreement_version:number; expires_at:string }>(`/agreement-portal/agreements/${agreementId}/send`, { method: "POST", body: JSON.stringify(body) }),
+  },
+  invoicePortal: {
+    get: (token: string) => publicApi<InvoicePortal>(`/invoice-portal/public/${encodeURIComponent(token)}`),
+    createPaymentIntent: (token: string) => publicApi<InvoicePortalPaymentIntent>(`/invoice-portal/public/${encodeURIComponent(token)}/payment-intent`, { method: "POST", body: JSON.stringify({}) }),
+    confirm: (token: string, paymentIntentId: string) => publicApi<InvoicePortal>(`/invoice-portal/public/${encodeURIComponent(token)}/confirm`, { method: "POST", body: JSON.stringify({ payment_intent_id: paymentIntentId }) }),
+    send: (invoiceId: string) => api<{ notification_id: string; notification_status: string; recipient_name: string; recipient_email: string; balance_due: string; expires_at: string }>(`/invoice-portal/invoices/${invoiceId}/send`, { method: "POST", body: JSON.stringify({}) }),
   },
   notifications: { get: (id: string) => api<unknown>(`/notifications/${id}`), list: (q = "") => api<unknown[]>(`/notifications${q ? `?${q}` : ""}`), create: (b: unknown, key: string) => api<unknown>("/notifications", { method: "POST", headers: { "Idempotency-Key": key }, body: JSON.stringify(b) }), retry: (id: string) => api<unknown>(`/notifications/${id}/retry`, { method: "POST" }), attempts: (id: string) => api<unknown[]>(`/notifications/${id}/attempts`) },
   sms: { list: () => api<unknown[]>("/sms"), create: (b: unknown, key: string) => api<unknown>("/sms", { method: "POST", headers: { "Idempotency-Key": key }, body: JSON.stringify(b) }) },

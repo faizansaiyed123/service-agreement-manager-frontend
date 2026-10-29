@@ -640,3 +640,53 @@ h3{margin-bottom:0;font-size:1.05rem}.eyebrow{display:block;font-size:.7rem;text
     min-width: 0;
   }
 }
+
+
+/* Customer invoice portal */
+.success-banner{display:grid;gap:6px;border:1px solid #c8dfd1;background:#eff8f2;color:#21583f;padding:12px 14px;border-radius:11px;font-size:.82rem;margin:12px 0}
+.success-banner .muted{color:#47725c}
+.invoice-portal .agreement-portal-card{max-width:960px;margin:0 auto}
+.invoice-portal .agreement-portal-heading h1{margin-top:6px}
+.invoice-portal-notice{margin:12px 0;padding:12px 14px;border:1px solid #c9dce7;background:#f1f7fa;color:#315e72;border-radius:11px;font-size:.82rem}
+.invoice-portal-totals{display:grid;gap:0;max-width:430px;margin:18px 0 0 auto}
+.invoice-portal-totals>div{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:9px 0;border-bottom:1px solid var(--line);font-size:.82rem}
+.invoice-portal-totals>div span{color:var(--muted)}
+.invoice-portal-totals .invoice-portal-balance{border-bottom:0;border-top:2px solid var(--ink);margin-top:4px;padding-top:13px;font-size:1rem;font-weight:850}
+.invoice-portal-totals .invoice-portal-balance span{color:var(--ink)}
+.invoice-portal-payment{margin-top:26px;padding:19px;border-radius:15px;background:var(--soft);border:1px solid var(--line)}
+.invoice-portal-pay-row{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.invoice-portal-pay-row>div{display:grid;gap:4px}
+.invoice-portal-pay-row>div>strong{font-size:1.3rem}
+.invoice-portal-test-notice{margin:13px 0;padding:12px;border:1px solid #ead29b;border-radius:10px;background:#fff7e2;color:#75551a;font-size:.8rem;line-height:1.6}
+.invoice-portal-checkout{display:grid;gap:13px;margin-top:15px}
+.invoice-portal-checkout>p{margin:0}
+.invoice-portal-secure-note{margin:13px 0 0;font-size:.75rem}
+.invoice-portal-paid{display:grid;gap:5px;color:var(--accent)}
+.invoice-portal-paid span{font-size:.82rem;color:var(--muted)}
+.portal-expiry{font-size:.73rem;color:var(--muted);text-align:center;margin:17px 0 0}
+.agreement-portal-footer{max-width:960px;margin:16px auto 0;padding:0 8px;font-size:.74rem;line-height:1.6;color:var(--muted)}
+.agreement-portal-state{display:grid;gap:12px;place-items:center;text-align:center;min-height:240px}
+.invoice-portal-send-summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px;border:1px solid var(--line);border-radius:12px;margin:14px 0}
+.invoice-portal-send-summary>div{display:grid;gap:5px}
+.invoice-portal-send-summary strong{overflow-wrap:anywhere}
+.technician-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:-7px 0 16px;color:var(--muted);font-size:.82rem}
+.technician-toolbar strong{font-size:1.1rem;color:var(--ink)}
+.technician-filter{display:flex;gap:6px;border-bottom:1px solid var(--line)}
+.technician-order-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.technician-order-card{display:flex;flex-direction:column;gap:16px}
+.technician-order-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.technician-order-heading h2{font-size:1.05rem;margin:5px 0 0}
+.technician-order-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.technician-order-meta>div{display:grid;gap:5px;padding:11px;border-radius:10px;background:var(--soft)}
+.technician-order-meta strong{font-size:.82rem}
+.technician-order-description{white-space:pre-wrap;color:var(--muted);font-size:.83rem;line-height:1.6;margin:0}
+.technician-order-actions{display:flex;align-items:center;justify-content:flex-start;gap:12px;margin-top:auto;padding-top:12px;border-top:1px solid var(--line)}
+.technician-completed-note{display:grid;gap:4px;padding:12px;border-radius:10px;background:#eff8f2;color:#21583f;font-size:.82rem}
+.technician-completed-note span{color:#47725c;font-size:.75rem}
+.technician-complete-form{display:grid;gap:14px}
+.technician-complete-form>label{display:grid;gap:7px;font-size:.82rem;font-weight:750}
+.technician-checklist{display:grid;gap:10px;border:1px solid var(--line);border-radius:12px;padding:14px}
+.technician-checklist legend{padding:0 5px;font-size:.8rem;font-weight:850}
+.capitalize{text-transform:capitalize}
+@media(max-width:760px){.technician-order-grid{grid-template-columns:1fr}.invoice-portal-pay-row{align-items:stretch;flex-direction:column}.invoice-portal-pay-row .btn{width:100%}}
+@media(max-width:640px){.invoice-portal-send-summary{grid-template-columns:1fr}.technician-toolbar{align-items:flex-start;flex-direction:column}.invoice-portal .agreement-portal-card{padding:20px}}

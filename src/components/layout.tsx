@@ -16,17 +16,32 @@ const nav = [
   { to: "/settings", label: "Settings", icon: "⚙" },
 ];
 
+const technicianNav = [
+  { to: "/my-work", label: "My Work", icon: "✓" },
+];
+
 export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let live = true;
     endpoints.auth.me()
-      .then(value => { if (live) setUser(value); })
-      .catch(() => { navigate("/login", { replace: true }); });
+      .then(value => {
+        if (live) {
+          setUser(value);
+          setLoadingUser(false);
+        }
+      })
+      .catch(() => {
+        if (live) {
+          setLoadingUser(false);
+          navigate("/login", { replace: true });
+        }
+      });
     return () => { live = false; };
   }, [navigate]);
 
@@ -38,25 +53,30 @@ export function AppShell() {
     }
   }
 
-  const current = nav.find(item =>
+  if (loadingUser || !user) {
+    return <div className="center-load" role="status">Loading your workspace…</div>;
+  }
+
+  const visibleNav = user.role === "technician" ? technicianNav : nav;
+  const current = visibleNav.find(item =>
     item.to === "/dashboard"
       ? location.pathname === item.to
       : location.pathname.startsWith(item.to)
-  )?.label || "Overview";
+  )?.label || (user.role === "technician" ? "My Work" : "Overview");
 
   return (
     <div className="app-shell">
       <aside className={`sidebar ${open ? "sidebar-open" : ""}`}>
-        <NavLink className="brand" to="/dashboard" aria-label="Service Agreement Manager overview">
+        <NavLink className="brand" to={user.role === "technician" ? "/my-work" : "/dashboard"} aria-label="Service Agreement Manager workspace">
           <span className="brand-mark">SA</span>
           <div><strong>Service Agreement</strong><span>Manager</span></div>
         </NavLink>
         <nav aria-label="Workspace navigation">
-          {nav.map(item => (
+          {visibleNav.map(item => (
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === "/dashboard"}
+              end={item.to === "/dashboard" || item.to === "/my-work"}
               onClick={() => setOpen(false)}
               className={({ isActive }) => isActive ? "nav-item nav-active" : "nav-item"}
             >
@@ -72,8 +92,8 @@ export function AppShell() {
           <button className="menu-button" onClick={() => setOpen(true)} aria-label="Open navigation">☰</button>
           <div className="crumb"><span>Workspace</span><b>/</b><strong>{current}</strong></div>
           <div className="top-user">
-            <div className="avatar">{user?.full_name?.slice(0, 1).toUpperCase() || "U"}</div>
-            <div><strong>{user?.full_name || "Loading…"}</strong><span>{user?.role || ""}</span></div>
+            <div className="avatar">{user.full_name.slice(0, 1).toUpperCase()}</div>
+            <div><strong>{user.full_name}</strong><span>{user.role}</span></div>
             <button className="ghost-button" onClick={() => void logout()}>Sign out</button>
           </div>
         </header>

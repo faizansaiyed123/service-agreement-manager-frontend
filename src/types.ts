@@ -17,3 +17,35 @@ export interface InvoiceLine { id:string; service_code:string; description:strin
 export interface Invoice { id:string; company_id:string; customer_id:string; service_location_id:string|null; agreement_id:string|null; invoice_number:string; status:"draft"|"issued"|"partially_paid"|"paid"|"void"|"overdue"; invoice_date:string; due_date:string; currency:string; subtotal:string; total_amount:string; discount_percent:string; discount_amount:string; tax_percent:string; tax_amount:string; notes:string|null; issued_at:string|null; voided_at:string|null; void_reason:string|null; created_at:string; updated_at:string; lines:InvoiceLine[]; amount_paid:string; amount_refunded:string; credits_applied:string; balance_due:string; is_overdue:boolean; }
 export interface Branch { id:string; company_id:string; name:string; code:string; timezone:string; address_line1:string|null; address_line2:string|null; city:string|null; region:string|null; postal_code:string|null; country_code:string; phone:string|null; email:string|null; is_primary:boolean; is_active:boolean; created_at:string; updated_at:string; }
 export interface RenewalOffer { id:string; company_id:string; source_agreement_id:string; renewed_agreement_id:string|null; offered_by_user_id:string|null; status:"offered"|"accepted"|"declined"|"expired"|"cancelled"; proposed_start_date:string; proposed_end_date:string; expires_on:string; snapshot:Record<string,unknown>; accepted_by_name:string|null; accepted_at:string|null; acceptance_method:string|null; acceptance_reference:string|null; decline_reason:string|null; created_at:string; updated_at:string; }
+export interface InvoicePortalLine { service_code: string; description: string; details: string | null; quantity: string; unit_price: string; line_total: string; }
+export interface InvoicePortal {
+  invoice_number: string;
+  company_name: string;
+  customer_name: string;
+  recipient_name: string;
+  recipient_email: string;
+  invoice_date: string;
+  due_date: string;
+  issued_at: string | null;
+  currency: string;
+  status: string;
+  subtotal: string;
+  discount_amount: string;
+  tax_amount: string;
+  total_amount: string;
+  amount_paid: string;
+  amount_refunded: string;
+  credits_applied: string;
+  balance_due: string;
+  notes: string | null;
+  expires_at: string;
+  portal_status: "payable" | "paid";
+  lines: InvoicePortalLine[];
+}
+export interface InvoicePortalPaymentIntent {
+  payment_intent_id: string;
+  client_secret: string;
+  amount: string;
+  currency: string;
+  test_mode: boolean;
+}

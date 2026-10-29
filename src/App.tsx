@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useOutletContext } from "react-router-dom";
 import { AppShell } from "./components/layout";
 import { endpoints } from "./lib/api";
 import { publicRegistrationEnabled } from "./lib/features";
+import type { Role, User } from "./types";
 import { AuthPage } from "./pages/Auth";
 import { LandingPage } from "./pages/LandingPage";
 import { OverviewPage } from "./pages/Overview";
@@ -16,7 +17,20 @@ import { SettingsPage } from "./pages/Settings";
 import { ReportsPage } from "./pages/Reports";
 import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from "./pages/PasswordRecovery";
 import { AgreementPortalPage } from "./pages/AgreementPortal";
+import { InvoicePortalPage } from "./pages/InvoicePortal";
 import { IntegrationsPage } from "./pages/Integrations";
+import { TechnicianPage } from "./pages/Technician";
+
+const workspaceRoles: Role[] = ["owner", "admin", "manager", "billing", "staff"];
+
+function RoleGate({ roles, children }: { roles: Role[]; children: ReactNode }) {
+  const { user } = useOutletContext<{ user: User | null }>();
+  if (!user) return <div className="center-load" role="status">Loading your workspace…</div>;
+  if (!roles.includes(user.role)) {
+    return <Navigate to={user.role === "technician" ? "/my-work" : "/dashboard"} replace />;
+  }
+  return <>{children}</>;
+}
 
 function Protected({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -47,7 +61,6 @@ function Protected({ children }: { children: ReactNode }) {
     : <Navigate to="/login" replace state={{ from: location }} />;
 }
 
-
 export default function App() {
   return (
     <Routes>
@@ -58,18 +71,20 @@ export default function App() {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/agreement/:token" element={<AgreementPortalPage />} />
+      <Route path="/invoice/:token" element={<InvoicePortalPage />} />
 
       <Route element={<Protected><AppShell /></Protected>}>
-        <Route path="dashboard" element={<OverviewPage />} />
-        <Route path="customers" element={<CustomersPage />} />
-        <Route path="agreements" element={<AgreementsPage />} />
-        <Route path="operations" element={<OperationsPage />} />
-        <Route path="invoices" element={<InvoicesPage />} />
-        <Route path="assets" element={<EquipmentPage />} />
-        <Route path="catalog" element={<CatalogPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="integrations" element={<IntegrationsPage />} />
+        <Route path="my-work" element={<RoleGate roles={["technician"]}><TechnicianPage /></RoleGate>} />
+        <Route path="dashboard" element={<RoleGate roles={workspaceRoles}><OverviewPage /></RoleGate>} />
+        <Route path="customers" element={<RoleGate roles={workspaceRoles}><CustomersPage /></RoleGate>} />
+        <Route path="agreements" element={<RoleGate roles={workspaceRoles}><AgreementsPage /></RoleGate>} />
+        <Route path="operations" element={<RoleGate roles={workspaceRoles}><OperationsPage /></RoleGate>} />
+        <Route path="invoices" element={<RoleGate roles={workspaceRoles}><InvoicesPage /></RoleGate>} />
+        <Route path="assets" element={<RoleGate roles={workspaceRoles}><EquipmentPage /></RoleGate>} />
+        <Route path="catalog" element={<RoleGate roles={workspaceRoles}><CatalogPage /></RoleGate>} />
+        <Route path="settings" element={<RoleGate roles={workspaceRoles}><SettingsPage /></RoleGate>} />
+        <Route path="reports" element={<RoleGate roles={workspaceRoles}><ReportsPage /></RoleGate>} />
+        <Route path="integrations" element={<RoleGate roles={workspaceRoles}><IntegrationsPage /></RoleGate>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
