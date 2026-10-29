@@ -846,6 +846,68 @@ function InvoiceDetail({
   );
 }
 
+function SendPaymentLinkModal({
+  invoice,
+  onClose,
+  onSent,
+}: {
+  invoice: Invoice;
+  onClose: () => void;
+  onSent: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<{
+    notification_status: string;
+    recipient_name: string;
+    recipient_email: string;
+    balance_due: string;
+    expires_at: string;
+  } | null>(null);
+
+  async function send() {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await endpoints.invoicePortal.send(invoice.id);
+      setResult(response);
+      await onSent();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to send the invoice payment link.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title="Send secure payment link" onClose={onClose}>
+      <p className="muted">The customer will receive an expiring link to review this invoice and pay the outstanding balance securely through Stripe. The payment form will not appear in the admin workspace.</p>
+      <div className="invoice-portal-send-summary">
+        <div><span className="eyebrow">Invoice</span><strong>{invoice.invoice_number}</strong></div>
+        <div><span className="eyebrow">Outstanding balance</span><strong>{money(invoice.balance_due, invoice.currency)}</strong></div>
+      </div>
+      {error && <div className="error-banner" role="alert">{error}</div>}
+      {result && (
+        <div className="success-banner" role="status">
+          <strong>Payment link email {result.notification_status === "sent" ? "sent" : result.notification_status === "queued" ? "queued" : result.notification_status}.</strong>
+          <span>Recipient: {result.recipient_name} ({result.recipient_email})</span>
+          <span>Balance: {money(result.balance_due, invoice.currency)}</span>
+          <span>Link expires: {new Date(result.expires_at).toLocaleString()}</span>
+          <p className="muted">Delivery depends on the configured notification worker and email provider.</p>
+        </div>
+      )}
+      {!result ? (
+        <div className="modal-actions">
+          <Button disabled={busy || Number(invoice.balance_due) <= 0} onClick={() => void send()}>{busy ? "Queuing email…" : "Send payment link"}</Button>
+          <Button type="button" className="btn-secondary" disabled={busy} onClick={onClose}>Cancel</Button>
+        </div>
+      ) : (
+        <div className="modal-actions"><Button onClick={onClose}>Close</Button></div>
+      )}
+    </Modal>
+  );
+}
+
 function PaymentModal({
   invoice,
   onClose,
