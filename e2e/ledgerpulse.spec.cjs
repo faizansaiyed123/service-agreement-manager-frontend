@@ -306,10 +306,10 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.getByRole('button', { name: 'Branches', exact: true }).click();
   await page.getByRole('button', { name: 'Add branch', exact: true }).click();
   const branchDialog = page.getByRole('dialog').last();
-  const branchName = 'E2E Branch ' + unique;
-  const branchCode = 'E2E-' + unique.slice(-8);
-  await branchDialog.getByLabel('Name', { exact: true }).fill(branchName);
-  await branchDialog.getByLabel('Code', { exact: true }).fill(branchCode);
+  const e2eServiceBranchName = 'E2E Branch ' + unique;
+  const e2eServiceBranchCode = 'E2E-' + unique.slice(-8);
+  await branchDialog.getByLabel('Name', { exact: true }).fill(e2eServiceBranchName);
+  await branchDialog.getByLabel('Code', { exact: true }).fill(e2eServiceBranchCode);
   await branchDialog.getByLabel('Timezone', { exact: true }).fill('America/Chicago');
   await branchDialog.getByLabel('Country code', { exact: true }).fill('US');
   await branchDialog.getByLabel('City', { exact: true }).fill('Austin');
