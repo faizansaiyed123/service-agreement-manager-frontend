@@ -342,7 +342,10 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   expect(inviteMatch, invitationNotificationBody).not.toBeNull();
   const activation = await page.request.post(
     API + '/api/v1/team/invitations/public/' + encodeURIComponent(inviteMatch[1]) + '/accept',
-    { data: { password: technicianPassword } },
+    {
+      data: { password: technicianPassword },
+      headers: { Origin: 'http://127.0.0.1:4173' },
+    },
   );
   expect(activation.status()).toBe(201);
   const session = await activation.json();
