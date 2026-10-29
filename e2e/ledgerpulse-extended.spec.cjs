@@ -5,6 +5,14 @@ const path = require('node:path');
 
 const API = process.env.E2E_API_URL || 'http://127.0.0.1:8000';
 
+async function chooseOption(page, control, value) {
+  await control.click();
+  const escaped = String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const option = page.locator('.select-menu .select-option[data-value="' + escaped + '"]');
+  await expect(option).toBeVisible();
+  await option.click();
+}
+
 async function browserApi(page, method, route, body, extraHeaders = {}) {
   return page.evaluate(async (args) => {
     const headers = { ...args.extraHeaders };
@@ -50,9 +58,9 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
 
   // Create a browser-cookie session rather than relying on a bearer token in the UI.
   await page.goto('/register');
-  await page.getByLabel('Company name').fill('Northstar Facility Services ' + unique);
-  await page.getByLabel('Your name').fill('Morgan Ellis');
-  await page.getByLabel('Email').fill(ownerEmail);
+  await page.getByLabel('Company name', { exact: true }).fill('Northstar Facility Services ' + unique);
+  await page.getByLabel('Your name', { exact: true }).fill('Morgan Ellis');
+  await page.getByLabel('Email', { exact: true }).fill(ownerEmail);
   await page.locator('input[autocomplete="new-password"]').fill(password);
   const registerPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/auth/register' && response.request().method() === 'POST');
@@ -91,15 +99,15 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
 
   // Exercise the real recovery screens as a user, including invalid/expired one-time token errors.
   await page.goto('/forgot-password');
-  await page.getByLabel('Email').fill(ownerEmail);
+  await page.getByLabel('Email', { exact: true }).fill(ownerEmail);
   await page.getByRole('button', { name: 'Send reset link', exact: true }).click();
   await expect(page.locator('.success-banner')).toContainText(/If an account exists/i);
   await capture(page, '22-password-reset-request.png');
 
   const uiResetToken = 'invalid-ui-reset-' + unique + '-0123456789abcdef';
   await page.goto('/reset-password#token=' + encodeURIComponent(uiResetToken));
-  await page.getByLabel('New password').fill('Northstar-Reset-UI!2026');
-  await page.getByLabel('Confirm password').fill('Northstar-Reset-UI!2026');
+  await page.getByLabel('New password', { exact: true }).fill('Northstar-Reset-UI!2026');
+  await page.getByLabel('Confirm password', { exact: true }).fill('Northstar-Reset-UI!2026');
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('');
   await page.getByRole('button', { name: 'Set new password', exact: true }).click();
   await expect(page.getByText(/password reset token is invalid or expired/i)).toBeVisible();
@@ -107,8 +115,8 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
 
   const uiVerificationToken = 'invalid-ui-verification-' + unique + '-0123456789abcdef';
   await page.goto('/verify-email#token=' + encodeURIComponent(uiVerificationToken));
-  await page.getByLabel('Choose password').fill('Northstar-Verify-UI!2026');
-  await page.getByLabel('Confirm password').fill('Northstar-Verify-UI!2026');
+  await page.getByLabel('Choose password', { exact: true }).fill('Northstar-Verify-UI!2026');
+  await page.getByLabel('Confirm password', { exact: true }).fill('Northstar-Verify-UI!2026');
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('');
   await page.getByRole('button', { name: 'Verify email and set password', exact: true }).click();
   await expect(page.getByText(/email verification link is invalid or expired/i)).toBeVisible();
@@ -311,8 +319,8 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
   await expect(invoiceDialog).toContainText(invoice.invoice_number);
   await invoiceDialog.getByRole('button', { name: 'Record payment', exact: true }).click();
   const paymentDialog = page.getByRole('dialog').last();
-  await paymentDialog.getByLabel('Amount').fill('70.00');
-  await paymentDialog.getByLabel('Reference').fill('QA-UI-FINAL-' + unique);
+  await paymentDialog.getByLabel('Amount', { exact: true }).fill('70.00');
+  await paymentDialog.getByLabel('Reference', { exact: true }).fill('QA-UI-FINAL-' + unique);
   await paymentDialog.getByRole('button', { name: 'Record payment', exact: true }).click();
   await expect.poll(async () => (await browserApi(page, 'GET', '/invoices/' + invoice.id)).body.status).toBe('paid');
 
@@ -320,9 +328,9 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
   invoiceDialog = page.getByRole('dialog').last();
   await invoiceDialog.getByRole('button', { name: 'Refund payment', exact: true }).click();
   const refundDialog = page.getByRole('dialog').last();
-  await refundDialog.getByLabel('Payment').selectOption(partialPayment.body.id);
-  await refundDialog.getByLabel('Amount').fill('5.00');
-  await refundDialog.getByLabel('Reason').fill('UI refund regression check');
+  await chooseOption(page, refundDialog.getByLabel('Payment', { exact: true }), partialPayment.body.id);
+  await refundDialog.getByLabel('Amount', { exact: true }).fill('5.00');
+  await refundDialog.getByLabel('Reason', { exact: true }).fill('UI refund regression check');
   await refundDialog.getByRole('button', { name: 'Refund payment', exact: true }).click();
   await expect.poll(async () => Number((await browserApi(page, 'GET', '/invoices/' + invoice.id)).body.balance_due)).toBe(5);
 
@@ -357,8 +365,8 @@ test('Service Agreement Manager account security, attachments, webhooks and fina
   invoiceDialog = page.getByRole('dialog').last();
   await invoiceDialog.getByRole('button', { name: 'Add credit', exact: true }).click();
   const creditDialog = page.getByRole('dialog').last();
-  await creditDialog.getByLabel('Amount').fill('5.00');
-  await creditDialog.getByLabel('Reason').fill('UI credit regression check');
+  await creditDialog.getByLabel('Amount', { exact: true }).fill('5.00');
+  await creditDialog.getByLabel('Reason', { exact: true }).fill('UI credit regression check');
   await creditDialog.getByRole('button', { name: 'Apply credit', exact: true }).click();
   await expect.poll(async () => Number((await browserApi(page, 'GET', '/invoices/' + invoice.id)).body.balance_due)).toBe(5);
 
