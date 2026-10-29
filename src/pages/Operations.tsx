@@ -540,6 +540,7 @@ function WorkOrderEditModal({
   const [form, setForm] = useState({
     title: order.title,
     description: order.description || "",
+    requiredSkill: order.required_skill || "",
     priority: order.priority,
     scheduledFor: order.scheduled_for,
   });
@@ -731,6 +732,7 @@ function WorkOrderModal({
         agreement_id: form.agreementId || null,
         title: form.title,
         description: form.description || null,
+        required_skill: form.requiredSkill.trim() || null,
         priority: form.priority,
         scheduled_for: form.scheduledFor,
       });
@@ -865,6 +867,16 @@ function WorkOrderModal({
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
+        </label>
+        <label>
+          Required skill (optional)
+          <Input
+            value={form.requiredSkill}
+            onChange={(e) => setForm({ ...form, requiredSkill: e.target.value })}
+            maxLength={80}
+            placeholder="AC maintenance, refrigeration, HVAC…"
+          />
+          <span className="muted">Only technicians with this skill can be assigned.</span>
         </label>
         {error && <div className="error-banner">{error}</div>}
         <Button disabled={busy || !form.locationId}>
@@ -1235,16 +1247,6 @@ function ScheduleEditModal({
     <Modal title="Edit maintenance plan" onClose={onClose}>
       <form className="form-grid" onSubmit={submit}>
         <label>
-          Required skill (optional)
-          <Input
-            value={form.requiredSkill}
-            onChange={(e) => setForm({ ...form, requiredSkill: e.target.value })}
-            maxLength={80}
-            placeholder="AC maintenance, refrigeration, HVAC…"
-          />
-          <span className="muted">Generated work orders inherit the required skill.</span>
-        </label>
-        <label>
           Plan name
           <Input
             value={form.name}
@@ -1444,6 +1446,16 @@ function ScheduleModal({
             </Select>
           </label>
         </div>
+        <label>
+          Required skill (optional)
+          <Input
+            value={form.requiredSkill}
+            onChange={(e) => setForm({ ...form, requiredSkill: e.target.value })}
+            maxLength={80}
+            placeholder="AC maintenance, refrigeration, HVAC…"
+          />
+          <span className="muted">Generated work orders inherit this skill requirement.</span>
+        </label>
         <div className="form-two">
           <label className="branch-routing-field">
             Branch
