@@ -3,14 +3,194 @@ import { Link } from "react-router-dom";
 import { endpoints } from "../lib/api";
 import { Badge, Card, EmptyState, PageHeader, Spinner } from "../components/ui";
 import type { Agreement, Customer, Invoice, WorkOrder } from "../types";
-const money=(value:string|number,currency="USD")=>new Intl.NumberFormat(undefined,{style:"currency",currency}).format(Number(value));
-export function OverviewPage(){
-  const[data,setData]=useState<{customers:Customer[];agreements:Agreement[];workOrders:WorkOrder[];invoices:Invoice[]}|null>(null),[error,setError]=useState("");
-  useEffect(()=>{Promise.all([endpoints.customers.list("limit=100"),endpoints.agreements.list("limit=100"),endpoints.workOrders.list("limit=100"),endpoints.invoices.list("limit=100")]).then(([customers,agreements,workOrders,invoices])=>setData({customers,agreements,workOrders,invoices})).catch(c=>setError(c instanceof Error?c.message:"Unable to load dashboard"))},[]);
-  const stats=useMemo(()=>{const invoices=data?.invoices||[];return{customers:(data?.customers||[]).filter(x=>x.status==="active").length,agreements:(data?.agreements||[]).filter(x=>x.status==="active").length,orders:(data?.workOrders||[]).filter(x=>!["completed","cancelled"].includes(x.status)).length,receivables:invoices.reduce((t,x)=>t+Number(x.balance_due),0),currency:invoices[0]?.currency||"USD"}},[data]);
-  if(!data&&!error)return <div className="center-load"><Spinner/></div>;
-  if(error)return <Card><div className="error-banner">{error}</div></Card>;
-  const recent=[...(data?.workOrders||[])].sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime()).slice(0,6),overdue=(data?.invoices||[]).filter(x=>x.is_overdue).slice(0,5);
-  return <div><PageHeader eyebrow="Operations overview" title="Good work starts with a clear board." description="Live totals from customers, agreements, field operations and receivables."/><div className="stats-grid"><Stat label="Active customers" value={String(stats.customers)} note="CRM accounts in good standing"/><Stat label="Active agreements" value={String(stats.agreements)} note="Current contract coverage"/><Stat label="Open work orders" value={String(stats.orders)} note="Scheduled, assigned or in progress"/><Stat label="Receivables" value={money(stats.receivables,stats.currency)} note="Outstanding invoice balance"/></div><div className="split-grid"><Card><div className="card-title-row"><div><span className="eyebrow">Field work</span><h3>Recent work orders</h3></div><Link to="/operations">View all</Link></div>{recent.length?<div className="list">{recent.map(x=><Link className="list-row" key={x.id} to="/operations"><div><strong>{x.work_order_number} · {x.title}</strong><span>{x.scheduled_for}</span></div><Badge tone={x.status==="completed"?"success":x.priority==="emergency"?"danger":"info"}>{x.status}</Badge></Link>)}</div>:<EmptyState title="No work orders yet" description="Create the first one from Operations."/>}</Card><Card><div className="card-title-row"><div><span className="eyebrow">Cash flow</span><h3>Overdue invoices</h3></div><Link to="/invoices">View all</Link></div>{overdue.length?<div className="list">{overdue.map(x=><Link className="list-row" key={x.id} to="/invoices"><div><strong>{x.invoice_number}</strong><span>Due {x.due_date}</span></div><strong className="amount-negative">{money(x.balance_due,x.currency)}</strong></Link>)}</div>:<EmptyState title="Nothing overdue" description="Your current receivables are on track."/>}</Card></div></div>;
+
+const money = (value: string | number, currency = "USD") =>
+  new Intl.NumberFormat(undefined, { style: "currency", currency }).format(Number(value));
+
+export function OverviewPage() {
+  const [data, setData] = useState<{
+    customers: Customer[];
+    agreements: Agreement[];
+    workOrders: WorkOrder[];
+    invoices: Invoice[];
+  } | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    Promise.all([
+      endpoints.customers.list("limit=100"),
+      endpoints.agreements.list("limit=100"),
+      endpoints.workOrders.list("limit=100"),
+      endpoints.invoices.list("limit=100"),
+    ])
+      .then(([customers, agreements, workOrders, invoices]) =>
+        setData({ customers, agreements, workOrders, invoices }),
+      )
+      .catch((c) =>
+        setError(c instanceof Error ? c.message : "Unable to load dashboard"),
+      );
+  }, []);
+
+  const stats = useMemo(() => {
+    const invoices = data?.invoices || [];
+
+    return {
+      customers: (data?.customers || []).filter((x) => x.status === "active").length,
+      agreements: (data?.agreements || []).filter((x) => x.status === "active").length,
+      orders: (data?.workOrders || []).filter(
+        (x) => !["completed", "cancelled"].includes(x.status),
+      ).length,
+      receivables: invoices.reduce((t, x) => t + Number(x.balance_due), 0),
+      currency: invoices[0]?.currency || "USD",
+    };
+  }, [data]);
+
+  if (!data && !error) {
+    return (
+      <div className="center-load">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <div className="error-banner">{error}</div>
+      </Card>
+    );
+  }
+
+  const recent = [...(data?.workOrders || [])]
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
+    .slice(0, 6);
+  const overdue = (data?.invoices || []).filter((x) => x.is_overdue).slice(0, 5);
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow="Operations overview"
+        title="Good work starts with a clear board."
+        description="Live totals from customers, agreements, field operations and receivables."
+      />
+
+      <div className="stats-grid">
+        <Stat
+          label="Active customers"
+          value={String(stats.customers)}
+          note="CRM accounts in good standing"
+        />
+        <Stat
+          label="Active agreements"
+          value={String(stats.agreements)}
+          note="Current contract coverage"
+        />
+        <Stat
+          label="Open work orders"
+          value={String(stats.orders)}
+          note="Scheduled, assigned or in progress"
+        />
+        <Stat
+          label="Receivables"
+          value={money(stats.receivables, stats.currency)}
+          note="Outstanding invoice balance"
+        />
+      </div>
+
+      <div className="split-grid">
+        <Card>
+          <div className="card-title-row">
+            <div>
+              <span className="eyebrow">Field work</span>
+              <h3>Recent work orders</h3>
+            </div>
+            <Link to="/operations">View all</Link>
+          </div>
+
+          {recent.length ? (
+            <div className="list">
+              {recent.map((x) => (
+                <Link className="list-row" key={x.id} to="/operations">
+                  <div>
+                    <strong>
+                      {x.work_order_number} · {x.title}
+                    </strong>
+                    <span>{x.scheduled_for}</span>
+                  </div>
+                  <Badge
+                    tone={
+                      x.status === "completed"
+                        ? "success"
+                        : x.priority === "emergency"
+                          ? "danger"
+                          : "info"
+                    }
+                  >
+                    {x.status}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="No work orders yet"
+              description="Create the first one from Operations."
+            />
+          )}
+        </Card>
+
+        <Card>
+          <div className="card-title-row">
+            <div>
+              <span className="eyebrow">Cash flow</span>
+              <h3>Overdue invoices</h3>
+            </div>
+            <Link to="/invoices">View all</Link>
+          </div>
+
+          {overdue.length ? (
+            <div className="list">
+              {overdue.map((x) => (
+                <Link className="list-row" key={x.id} to="/invoices">
+                  <div>
+                    <strong>{x.invoice_number}</strong>
+                    <span>Due {x.due_date}</span>
+                  </div>
+                  <strong className="amount-negative">
+                    {money(x.balance_due, x.currency)}
+                  </strong>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="Nothing overdue"
+              description="Your current receivables are on track."
+            />
+          )}
+        </Card>
+      </div>
+    </div>
+  );
 }
-function Stat({label,value,note}:{label:string;value:string;note:string}){return <Card className="stat-card"><span className="eyebrow">{label}</span><strong className="stat-value">{value}</strong><span className="muted">{note}</span></Card>}
+
+function Stat({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string;
+  note: string;
+}) {
+  return (
+    <Card className="stat-card">
+      <span className="eyebrow">{label}</span>
+      <strong className="stat-value">{value}</strong>
+      <span className="muted">{note}</span>
+    </Card>
+  );
+}
