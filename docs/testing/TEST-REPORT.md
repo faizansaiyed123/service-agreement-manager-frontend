@@ -1,8 +1,8 @@
 # Walkthrough verification record
 
 **Result:** PASS
-**Project source commit:** [98ef5186e01b3c50a24e8f2bb8f859ad0acb0a18](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/98ef5186e01b3c50a24e8f2bb8f859ad0acb0a18)
-**Workflow run:** [Run #40834407494](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/40834407494)
+**Project source commit:** [6bef45a769ec17b79339b32d714d0a0a6ca78c9f](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/6bef45a769ec17b79339b32d714d0a0a6ca78c9f)
+**Workflow run:** [Run #40857866783](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/40857866783)
 **Browser journeys:** 4 passed, 0 failed, 0 skipped
 **Screenshots published:** 27
 **Backend pytest:** 89 passed, 0 failed/errors, 3 skipped
