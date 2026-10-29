@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const API = process.env.E2E_API_URL || 'http://127.0.0.1:8000';
 
@@ -16,6 +17,25 @@ async function capture(page, name) {
   const target = path.join(process.cwd(), 'test-results', 'screenshots', name);
   await fs.mkdir(path.dirname(target), { recursive: true });
   await page.screenshot({ path: target, fullPage: true, animations: 'disabled' });
+}
+
+function readNotificationBody(recipientEmail, eventType) {
+  const script = String.raw`import os, sys
+from sqlalchemy import create_engine, text
+url = os.environ["DATABASE_URL"]
+engine = create_engine(url)
+with engine.connect() as connection:
+    body = connection.execute(text("""
+        SELECT body FROM notification_outbox
+        WHERE recipient_email = :recipient_email AND event_type = :event_type
+        ORDER BY created_at DESC, id DESC LIMIT 1
+    """), {"recipient_email": sys.argv[1], "event_type": sys.argv[2]}).scalar()
+print(body or "")
+`;
+  return execFileSync('python', ['-c', script, recipientEmail, eventType], {
+    encoding: 'utf8',
+    env: process.env,
+  }).trim();
 }
 
 async function readApiFromBrowser(page, route) {
@@ -280,21 +300,37 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await expect(page.getByText(('e2e-' + unique).toUpperCase())).toBeVisible();
   await capture(page, '10-service-catalog-created.png');
 
-  // Create a technician from Settings, then test the complete work-order lifecycle.
+  // Invite a technician through the new one-time activation flow.
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await page.getByRole('button', { name: 'Team', exact: true }).click();
-  await page.getByRole('button', { name: 'Add team member', exact: true }).click();
+  await page.getByRole('button', { name: 'Invite technician', exact: true }).click();
   const technicianEmail = 'sam-tech-' + unique + '@example.com';
+  const technicianPassword = 'Northstar-Team-Member!2026';
   await page.getByLabel('Full name', { exact: true }).fill('E2E Technician');
   await page.getByLabel('Email', { exact: true }).fill(technicianEmail);
-  await page.getByRole('dialog').last().locator('input[type="password"]').fill('Northstar-Team-Member!2026');
-  await chooseOption(page, page.getByLabel('Role', { exact: true }), 'technician');
-  const technicianPromise = page.waitForResponse(response => response.url() === API + '/api/v1/users' && response.request().method() === 'POST');
-  await page.getByRole('button', { name: 'Create member', exact: true }).click();
+  await page.getByLabel('Skills / specializations', { exact: true }).fill('HVAC');
+  const technicianPromise = page.waitForResponse(response =>
+    response.url() === API + '/api/v1/team/invitations' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Send invitation', exact: true }).click();
   const technicianResponse = await technicianPromise;
   expect(technicianResponse.status()).toBe(201);
-  const technician = await technicianResponse.json();
+  const invitation = await technicianResponse.json();
+  expect(invitation.status).toBe('pending');
+  const notification = readNotificationBody(technicianEmail, 'team.technician_invited');
+  const inviteMatch = notification.match(/\/team\/invitation\/([^\s/]+)/);
+  expect(inviteMatch, notification).not.toBeNull();
+  const activation = await page.request.post(
+    API + '/api/v1/team/invitations/public/' + encodeURIComponent(inviteMatch[1]) + '/accept',
+    { data: { password: technicianPassword } },
+  );
+  expect(activation.status()).toBe(201);
+  const session = await activation.json();
+  const meResponse = await page.request.get(API + '/api/v1/auth/me', {
+    headers: { Authorization: 'Bearer ' + session.access_token },
+  });
+  expect(meResponse.status()).toBe(200);
+  const technician = await meResponse.json();
   expect(technician.role).toBe('technician');
   expect(technician.is_active).toBe(true);
 
@@ -310,6 +346,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.getByLabel('Scheduled date', { exact: true }).fill(new Date().toISOString().slice(0, 10));
   await chooseOption(page, page.getByLabel('Priority', { exact: true }), 'high');
   await page.getByLabel('Description', { exact: true }).fill('Synthetic job; no field visit will be performed.');
+  await page.getByLabel('Required skill (optional)', { exact: true }).fill('HVAC');
   const workOrderPromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create work order', exact: true }).click();
   const workOrderResponse = await workOrderPromise;
