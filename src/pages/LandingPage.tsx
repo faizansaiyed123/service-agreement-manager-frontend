@@ -91,7 +91,10 @@ export function LandingPage() {
         </nav>
         <div className="landing-header-actions">
           <Link className="landing-signin" to="/login">
-            Sign in
+            Staff sign in
+          </Link>
+          <Link className="landing-signin" to="/customer-portal/login">
+            Customer portal
           </Link>
           {publicRegistrationEnabled ? (
             <Link className="landing-cta landing-cta-small" to="/register">
@@ -397,7 +400,8 @@ export function LandingPage() {
           One workspace for the service relationship, from agreement to invoice.
         </p>
         <div>
-          <Link to="/login">Sign in</Link>
+          <Link to="/login">Staff sign in</Link>
+          <Link to="/customer-portal/login">Customer portal</Link>
           {publicRegistrationEnabled && (
             <Link to="/register">Create workspace</Link>
           )}

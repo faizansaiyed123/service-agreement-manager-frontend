@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const API = process.env.E2E_API_URL || 'http://127.0.0.1:8000';
 
@@ -16,6 +17,25 @@ async function capture(page, name) {
   const target = path.join(process.cwd(), 'test-results', 'screenshots', name);
   await fs.mkdir(path.dirname(target), { recursive: true });
   await page.screenshot({ path: target, fullPage: true, animations: 'disabled' });
+}
+
+function readNotificationBody(recipientEmail, eventType) {
+  const script = String.raw`import os, sys
+from sqlalchemy import create_engine, text
+url = os.environ["DATABASE_URL"]
+engine = create_engine(url)
+with engine.connect() as connection:
+    body = connection.execute(text("""
+        SELECT body FROM notification_outbox
+        WHERE recipient_email = :recipient_email AND event_type = :event_type
+        ORDER BY created_at DESC, id DESC LIMIT 1
+    """), {"recipient_email": sys.argv[1], "event_type": sys.argv[2]}).scalar()
+print(body or "")
+`;
+  return execFileSync('python', ['-c', script, recipientEmail, eventType], {
+    encoding: 'utf8',
+    env: process.env,
+  }).trim();
 }
 
 async function readApiFromBrowser(page, route) {
@@ -280,23 +300,72 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await expect(page.getByText(('e2e-' + unique).toUpperCase())).toBeVisible();
   await capture(page, '10-service-catalog-created.png');
 
-  // Create a technician from Settings, then test the complete work-order lifecycle.
+  // Create an active branch first; technician invitations require at least one eligible branch.
+  await page.goto('/operations');
+  await expect(page.getByRole('heading', { name: 'Operations' })).toBeVisible();
+  await page.getByRole('button', { name: 'Branches', exact: true }).click();
+  await page.getByRole('button', { name: 'Add branch', exact: true }).click();
+  const branchDialog = page.getByRole('dialog').last();
+  const e2eServiceBranchName = 'E2E Branch ' + unique;
+  const e2eServiceBranchCode = 'E2E-' + unique.slice(-8);
+  await branchDialog.getByLabel('Name', { exact: true }).fill(e2eServiceBranchName);
+  await branchDialog.getByLabel('Code', { exact: true }).fill(e2eServiceBranchCode);
+  await branchDialog.getByLabel('Timezone', { exact: true }).fill('America/Chicago');
+  await branchDialog.getByLabel('Country code', { exact: true }).fill('US');
+  await branchDialog.getByLabel('City', { exact: true }).fill('Austin');
+  const branchPromise = page.waitForResponse(response =>
+    response.url() === API + '/api/v1/branches' && response.request().method() === 'POST');
+  await branchDialog.getByRole('button', { name: 'Create branch', exact: true }).click();
+  const branchResponse = await branchPromise;
+  expect(branchResponse.status()).toBe(201);
+  expect((await branchResponse.json()).is_active).toBe(true);
+
+  // Invite a technician through the new one-time activation flow.
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await page.getByRole('button', { name: 'Team', exact: true }).click();
-  await page.getByRole('button', { name: 'Add team member', exact: true }).click();
+  await page.getByRole('button', { name: 'Invite technician', exact: true }).click();
   const technicianEmail = 'sam-tech-' + unique + '@example.com';
+  const technicianPassword = 'Northstar-Team-Member!2026';
   await page.getByLabel('Full name', { exact: true }).fill('E2E Technician');
   await page.getByLabel('Email', { exact: true }).fill(technicianEmail);
-  await page.getByRole('dialog').last().locator('input[type="password"]').fill('Northstar-Team-Member!2026');
-  await chooseOption(page, page.getByLabel('Role', { exact: true }), 'technician');
-  const technicianPromise = page.waitForResponse(response => response.url() === API + '/api/v1/users' && response.request().method() === 'POST');
-  await page.getByRole('button', { name: 'Create member', exact: true }).click();
+  await page.getByLabel('Skills / specializations', { exact: true }).fill('HVAC');
+  const technicianPromise = page.waitForResponse(response =>
+    response.url() === API + '/api/v1/team/invitations' && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Send invitation', exact: true }).click();
   const technicianResponse = await technicianPromise;
   expect(technicianResponse.status()).toBe(201);
-  const technician = await technicianResponse.json();
-  expect(technician.role).toBe('technician');
-  expect(technician.is_active).toBe(true);
+  const invitation = await technicianResponse.json();
+  expect(invitation.status).toBe('pending');
+  const invitationNotificationBody = readNotificationBody(technicianEmail, 'team.technician_invited');
+  const inviteMatch = invitationNotificationBody.match(/\/team\/invitation\/([^\s/]+)/);
+  expect(inviteMatch, invitationNotificationBody).not.toBeNull();
+  // Use an isolated browser context so accepting the invite doesn't replace
+  // the Owner's session. The actual browser sends a trusted Origin and receives
+  // HttpOnly session cookies rather than bearer tokens in the response body.
+  const browser = page.context().browser();
+  expect(browser).not.toBeNull();
+  const technicianContext = await browser.newContext();
+  let technician;
+  try {
+    const technicianPage = await technicianContext.newPage();
+    const invitationUrl = new URL(
+      '/team/invitation/' + encodeURIComponent(inviteMatch[1]),
+      page.url(),
+    ).toString();
+    await technicianPage.goto(invitationUrl);
+    await expect(technicianPage.getByRole('heading', { name: /Join / })).toBeVisible();
+    await technicianPage.getByLabel('Choose a password', { exact: true }).fill(technicianPassword);
+    await technicianPage.getByRole('button', { name: 'Activate technician account', exact: true }).click();
+    await expect(technicianPage).toHaveURL(new RegExp("/my-work/?$"));
+    const technicianSession = await readApiFromBrowser(technicianPage, '/auth/me');
+    expect(technicianSession.status).toBe(200);
+    technician = technicianSession.body;
+    expect(technician.role).toBe('technician');
+    expect(technician.is_active).toBe(true);
+  } finally {
+    await technicianContext.close();
+  }
 
   await page.goto('/operations');
   await expect(page.getByRole('heading', { name: 'Operations' })).toBeVisible();
@@ -310,6 +379,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.getByLabel('Scheduled date', { exact: true }).fill(new Date().toISOString().slice(0, 10));
   await chooseOption(page, page.getByLabel('Priority', { exact: true }), 'high');
   await page.getByLabel('Description', { exact: true }).fill('Synthetic job; no field visit will be performed.');
+  await page.getByPlaceholder('AC maintenance, refrigeration, HVAC…').fill('HVAC');
   const workOrderPromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create work order', exact: true }).click();
   const workOrderResponse = await workOrderPromise;
@@ -322,7 +392,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   const workOrderRow = page.getByRole('row').filter({ hasText: workOrderTitle });
   const assignPromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders/' + workOrder.id + '/assign' && response.request().method() === 'POST');
   await workOrderRow.getByRole('button', { name: 'Assign', exact: true }).click();
-  await chooseOption(page, page.getByLabel('Technician', { exact: true }), technician.id);
+  await chooseOption(page, page.getByLabel('Eligible technician', { exact: true }), technician.id);
   await page.getByRole('button', { name: 'Assign technician', exact: true }).click();
   const assignedResponse = await assignPromise;
   expect(assignedResponse.status()).toBe(200);

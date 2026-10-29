@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { endpoints } from "../lib/api";
-import type { Company, Customer, User } from "../types";
+import type { Branch, Company, Customer, TechnicianInvitation, TechnicianProfile, User } from "../types";
 import {
   Badge,
   Button,
@@ -101,7 +101,6 @@ export function SettingsPage() {
       {tab === "team" && (
         <TeamPanel
           users={users}
-          onCreated={(user) => setUsers((current) => [...current, user])}
           onChanged={(user) =>
             setUsers((current) =>
               current.map((item) => (item.id === user.id ? user : item)),
@@ -230,283 +229,277 @@ function CompanyPanel({
 
 function TeamPanel({
   users,
-  onCreated,
   onChanged,
 }: {
   users: User[];
-  onCreated: (user: User) => void;
   onChanged: (user: User) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [resetUser, setResetUser] = useState<User | null>(null);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [invitations, setInvitations] = useState<TechnicianInvitation[]>([]);
+  const [technicians, setTechnicians] = useState<TechnicianProfile[]>([]);
+  const [loadingTeam, setLoadingTeam] = useState(true);
+  const [error, setError] = useState("");
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [editing, setEditing] = useState<TechnicianProfile | null>(null);
+
+  async function reload() {
+    setError("");
+    try {
+      const [branchData, invitationData, technicianData] = await Promise.all([
+        endpoints.branches.list("limit=100"),
+        endpoints.team.invitations(),
+        endpoints.team.technicians(),
+      ]);
+      setBranches(branchData.filter((branch) => branch.is_active));
+      setInvitations(invitationData);
+      setTechnicians(technicianData);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to load team invitations and technician profiles");
+    } finally {
+      setLoadingTeam(false);
+    }
+  }
+
+  useEffect(() => { void reload(); }, []);
+
+  async function toggleUser(user: User) {
+    setError("");
+    try {
+      onChanged(await endpoints.users.update(user.id, { is_active: !user.is_active }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to update team member");
+    }
+  }
+
+  async function revoke(invitation: TechnicianInvitation) {
+    if (!window.confirm(`Revoke the invitation for ${invitation.email}?`)) return;
+    try {
+      await endpoints.team.revokeInvitation(invitation.id);
+      setInvitations((current) => current.map((item) =>
+        item.id === invitation.id ? { ...item, status: "revoked" } : item
+      ));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to revoke invitation");
+    }
+  }
 
   return (
-    <div>
+    <div className="form-grid">
+      {error && <div className="error-banner" role="alert">{error}</div>}
       <div className="page-actions settings-action">
-        <Button onClick={() => setOpen(true)}>Add team member</Button>
+        <div>
+          <h3>Technicians</h3>
+          <p className="muted">Invite technicians to set their own password, assign branches and record skills such as AC maintenance or refrigeration.</p>
+        </div>
+        <Button disabled={!branches.length} onClick={() => setInviteOpen(true)}>Invite technician</Button>
       </div>
+      {!branches.length && (
+        <div className="error-banner">There are no active branches. Activate or create a branch before inviting a technician.</div>
+      )}
       <Card>
-        {users.length ? (
+        {loadingTeam ? <div className="center-load"><Spinner /></div> : technicians.length ? (
           <div className="table-wrap">
             <table>
-              <thead>
-                <tr>
-                  <th>Member</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th />
-                </tr>
-              </thead>
+              <thead><tr><th>Technician</th><th>Skills</th><th>Branches</th><th>Status</th><th /></tr></thead>
               <tbody>
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td>
-                      <strong>{user.full_name}</strong>
-                      <span className="table-sub">{user.email}</span>
-                    </td>
-                    <td className="capitalize">{user.role}</td>
-                    <td>
-                      <Badge tone={user.is_active ? "success" : "neutral"}>
-                        {user.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </td>
-                    <td>
-                      <UserActions
-                        user={user}
-                        onChanged={onChanged}
-                        onReset={setResetUser}
-                      />
-                    </td>
+                {technicians.map((technician) => (
+                  <tr key={technician.id}>
+                    <td><strong>{technician.full_name}</strong><span className="table-sub">{technician.email}</span></td>
+                    <td>{technician.skills.length ? technician.skills.join(", ") : "No skills recorded"}</td>
+                    <td>{technician.branch_names.length ? technician.branch_names.join(", ") : "All branches (legacy account)"}</td>
+                    <td><Badge tone={technician.is_active ? "success" : "neutral"}>{technician.is_active ? "Active" : "Inactive"}</Badge></td>
+                    <td><button className="text-button" onClick={() => setEditing(technician)}>Skills & branches</button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        ) : (
-          <EmptyState
-            title="No team members"
-            description="Add staff or managers to collaborate securely."
-          />
-        )}
+        ) : <EmptyState title="No technicians yet" description="Invite a technician to give them their own login and a defined branch/skill profile." />}
       </Card>
-      {open && (
-        <UserModal
-          onClose={() => setOpen(false)}
-          onCreated={(user) => {
-            onCreated(user);
-            setOpen(false);
-          }}
-        />
-      )}
-      {resetUser && (
-        <ResetUserModal
-          user={resetUser}
-          onClose={() => setResetUser(null)}
-        />
-      )}
+
+      <div>
+        <h3>Invitations</h3>
+        <p className="muted">Pending invitations expire automatically. Revoke an invitation if it was sent to the wrong person.</p>
+      </div>
+      <Card>
+        {loadingTeam ? <div className="center-load"><Spinner /></div> : invitations.length ? (
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Invitee</th><th>Skills</th><th>Branches</th><th>Status</th><th>Expires</th><th /></tr></thead>
+              <tbody>
+                {invitations.map((invitation) => (
+                  <tr key={invitation.id}>
+                    <td><strong>{invitation.full_name}</strong><span className="table-sub">{invitation.email}</span></td>
+                    <td>{invitation.skills.length ? invitation.skills.join(", ") : "Not specified"}</td>
+                    <td>{invitation.branch_ids.length ? invitation.branch_ids.map((id) => branches.find((branch) => branch.id === id)?.name || "Inactive branch").join(", ") : "All active branches"}</td>
+                    <td><Badge tone={invitation.status === "accepted" ? "success" : invitation.status === "pending" ? "info" : "neutral"}>{invitation.status}</Badge></td>
+                    <td>{new Date(invitation.expires_at).toLocaleDateString()}</td>
+                    <td>{invitation.status === "pending" && <button className="text-button" onClick={() => void revoke(invitation)}>Revoke</button>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <EmptyState title="No invitations" description="Technician invitations and their status will appear here." />}
+      </Card>
+
+      <div>
+        <h3>Existing internal accounts</h3>
+        <p className="muted">This list includes existing owner, admin, billing and staff accounts. New technicians must use an invitation.</p>
+      </div>
+      <Card>
+        {users.filter((member) => member.role !== "technician").length ? (
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Member</th><th>Role</th><th>Status</th><th /></tr></thead>
+              <tbody>
+                {users.filter((member) => member.role !== "technician").map((member) => (
+                  <tr key={member.id}>
+                    <td><strong>{member.full_name}</strong><span className="table-sub">{member.email}</span></td>
+                    <td className="capitalize">{member.role}</td>
+                    <td><Badge tone={member.is_active ? "success" : "neutral"}>{member.is_active ? "Active" : "Inactive"}</Badge></td>
+                    <td>{member.role !== "owner" && <button className="text-button" onClick={() => void toggleUser(member)}>{member.is_active ? "Deactivate" : "Activate"}</button>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <EmptyState title="No other internal accounts" description="The company owner is the primary administrator." />}
+      </Card>
+
+      {inviteOpen && <TechnicianInvitationModal
+        branches={branches}
+        onClose={() => setInviteOpen(false)}
+        onInvited={(invitation) => {
+          setInvitations((current) => [invitation, ...current]);
+          setInviteOpen(false);
+        }}
+      />}
+      {editing && <TechnicianProfileModal
+        technician={editing}
+        branches={branches}
+        onClose={() => setEditing(null)}
+        onSaved={(updated) => {
+          setTechnicians((current) => current.map((item) => item.id === updated.id ? updated : item));
+          setEditing(null);
+        }}
+      />}
     </div>
   );
 }
 
-function UserActions({
-  user,
-  onChanged,
-  onReset,
-}: {
-  user: User;
-  onChanged: (user: User) => void;
-  onReset: (user: User) => void;
-}) {
-  async function toggle() {
-    try {
-      onChanged(
-        await endpoints.users.update(user.id, {
-          is_active: !user.is_active,
-        }),
-      );
-    } catch {
-      /* Keep unchanged if rejected. */
-    }
-  }
-
-  return (
-    <div className="row-actions">
-      <button className="text-button" onClick={() => void toggle()}>
-        {user.is_active ? "Deactivate" : "Activate"}
-      </button>
-      <button className="text-button" onClick={() => onReset(user)}>
-        Reset password
-      </button>
-    </div>
-  );
-}
-
-function UserModal({
+function TechnicianInvitationModal({
+  branches,
   onClose,
-  onCreated,
+  onInvited,
 }: {
+  branches: Branch[];
   onClose: () => void;
-  onCreated: (user: User) => void;
+  onInvited: (invitation: TechnicianInvitation) => void;
 }) {
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    role: "staff",
-  });
-  const [error, setError] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [branchIds, setBranchIds] = useState<string[]>(branches.map((branch) => branch.id));
+  const [skills, setSkills] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  function toggleBranch(id: string) {
+    setBranchIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError("");
-
     try {
-      onCreated(
-        await endpoints.users.create({
-          full_name: form.name,
-          email: form.email,
-          password: form.password,
-          role: form.role,
-        }),
-      );
+      const created = await endpoints.team.inviteTechnician({
+        full_name: name,
+        email,
+        branch_ids: branchIds,
+        skills: skills.split(/[,\n]/).map((value) => value.trim()).filter(Boolean),
+      });
+      onInvited(created);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to create user");
+      setError(cause instanceof Error ? cause.message : "Unable to invite technician");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Modal title="Add team member" onClose={onClose}>
+    <Modal title="Invite technician" onClose={onClose}>
       <form className="form-grid" onSubmit={submit}>
-        <div className="form-two">
-          <label>
-            Full name
-            <Input
-              value={form.name}
-              onChange={(event) => setForm({ ...form, name: event.target.value })}
-              required
-            />
-          </label>
-          <label>
-            Email
-            <Input
-              type="email"
-              value={form.email}
-              onChange={(event) =>
-                setForm({ ...form, email: event.target.value })
-              }
-              required
-            />
-          </label>
-        </div>
-        <div className="form-two">
-          <label>
-            Password
-            <Input
-              type="password"
-              minLength={12}
-              value={form.password}
-              onChange={(event) =>
-                setForm({ ...form, password: event.target.value })
-              }
-              required
-            />
-          </label>
-          <label>
-            Role
-            <Select
-              value={form.role}
-              onChange={(event) => setForm({ ...form, role: event.target.value })}
-            >
-              <option value="staff">Staff</option>
-              <option value="technician">Technician</option>
-              <option value="billing">Billing</option>
-              <option value="manager">Manager</option>
-              <option value="admin">Admin</option>
-            </Select>
-          </label>
-        </div>
-        {error && <div className="error-banner">{error}</div>}
-        <Button disabled={busy}>
-          {busy ? "Creating…" : "Create member"}
-        </Button>
+        <p className="muted">The technician receives a one-time invitation and chooses their own password. You never need to create or know their password.</p>
+        <label>Full name<Input value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={160} required /></label>
+        <label>Email<Input type="email" value={email} onChange={(event) => setEmail(event.target.value.trim())} required /></label>
+        <fieldset className="form-grid" style={{ border: "1px solid var(--border, #d8dde5)", borderRadius: 10, padding: 12 }}>
+          <legend>Branches</legend>
+          {branches.map((branch) => <label key={branch.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input type="checkbox" checked={branchIds.includes(branch.id)} onChange={() => toggleBranch(branch.id)} />
+            <span>{branch.name}</span>
+          </label>)}
+          <span className="muted">Select every branch where this technician is allowed to work.</span>
+        </fieldset>
+        <label>Skills / specializations<Input value={skills} onChange={(event) => setSkills(event.target.value)} maxLength={2000} placeholder="AC maintenance, Refrigeration, HVAC" /></label>
+        <p className="muted">Separate skills with commas. Skills help dispatch validate assignments; they are not account roles.</p>
+        {error && <div className="error-banner" role="alert">{error}</div>}
+        <div className="modal-actions"><Button type="button" className="btn-secondary" onClick={onClose}>Cancel</Button><Button disabled={busy || !name.trim() || !email.trim() || !branchIds.length}>{busy ? "Sending invitation…" : "Send invitation"}</Button></div>
       </form>
     </Modal>
   );
 }
 
-function ResetUserModal({
-  user,
+function TechnicianProfileModal({
+  technician,
+  branches,
   onClose,
+  onSaved,
 }: {
-  user: User;
+  technician: TechnicianProfile;
+  branches: Branch[];
   onClose: () => void;
+  onSaved: (technician: TechnicianProfile) => void;
 }) {
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
-  const [done, setDone] = useState(false);
+  const [branchIds, setBranchIds] = useState<string[]>(technician.branch_ids.length ? technician.branch_ids : branches.map((branch) => branch.id));
+  const [skills, setSkills] = useState(technician.skills.join(", "));
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  function toggleBranch(id: string) {
+    setBranchIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-
-    if (password !== confirm) {
-      setError("Passwords do not match.");
-      return;
-    }
-
     setBusy(true);
     setError("");
-
     try {
-      await endpoints.users.resetPassword(user.id, {
-        new_password: password,
+      const updated = await endpoints.team.updateTechnician(technician.id, {
+        branch_ids: branchIds,
+        skills: skills.split(/[,\n]/).map((value) => value.trim()).filter(Boolean),
       });
-      setDone(true);
+      onSaved(updated);
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Unable to reset password",
-      );
+      setError(cause instanceof Error ? cause.message : "Unable to update technician profile");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Modal title={"Reset password · " + user.full_name} onClose={onClose}>
+    <Modal title={`Skills & branches · ${technician.full_name}`} onClose={onClose}>
       <form className="form-grid" onSubmit={submit}>
-        <p className="muted">This invalidates the member's active sessions.</p>
-        <label>
-          New password
-          <Input
-            type="password"
-            minLength={12}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
-        </label>
-        <label>
-          Confirm password
-          <Input
-            type="password"
-            minLength={12}
-            value={confirm}
-            onChange={(event) => setConfirm(event.target.value)}
-            required
-          />
-        </label>
-        {done && (
-          <div className="success-banner">Password reset successfully.</div>
-        )}
-        {error && <div className="error-banner">{error}</div>}
-        <Button disabled={busy || done}>
-          {busy ? "Resetting…" : done ? "Password reset" : "Reset password"}
-        </Button>
+        <label>Skills / specializations<Input value={skills} onChange={(event) => setSkills(event.target.value)} maxLength={2000} placeholder="AC maintenance, Refrigeration" /></label>
+        <fieldset className="form-grid" style={{ border: "1px solid var(--border, #d8dde5)", borderRadius: 10, padding: 12 }}>
+          <legend>Eligible branches</legend>
+          {branches.map((branch) => <label key={branch.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input type="checkbox" checked={branchIds.includes(branch.id)} onChange={() => toggleBranch(branch.id)} />
+            <span>{branch.name}</span>
+          </label>)}
+        </fieldset>
+        {error && <div className="error-banner" role="alert">{error}</div>}
+        <div className="modal-actions"><Button type="button" className="btn-secondary" onClick={onClose}>Cancel</Button><Button disabled={busy || !branchIds.length}>{busy ? "Saving…" : "Save technician profile"}</Button></div>
       </form>
     </Modal>
   );
