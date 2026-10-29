@@ -480,6 +480,12 @@ function CustomerDrawer({
 
       <Attachments entityType="customer" entityId={customer.id} />
       <div className="modal-actions">
+        <Button
+          className="btn-secondary"
+          onClick={() => setEditOpen(true)}
+        >
+          Edit customer
+        </Button>
         {customer.status === "active" && (
           <Button
             className="btn-danger"
