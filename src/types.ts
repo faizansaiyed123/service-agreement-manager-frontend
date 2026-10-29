@@ -506,6 +506,6 @@ export interface CustomerPortalPaymentIntent {
 }
 
 
-export interface CustomerPortalPayment { id: string; invoice_id: string; invoice_number: string; amount: string; payment_method: string; reference: string | null; received_at: string; notes: string | null; stripe_status: string | null; refunds: CustomerPortalRefund[]; }
+export interface CustomerPortalPayment { id: string; invoice_id: string; invoice_number: string; amount: string; payment_method: string; reference: string | null; received_at: string; refunds: CustomerPortalRefund[]; }
 export interface CustomerPortalRefund { id: string; amount: string; refund_method: string; reference: string | null; reason: string; refunded_at: string; }
 export interface CustomerPortalDocument { id: string; entity_type: "customer" | "service_location" | "equipment" | "agreement" | "work_order" | "invoice"; entity_id: string; original_filename: string; content_type: string; size_bytes: number; description: string | null; created_at: string; }

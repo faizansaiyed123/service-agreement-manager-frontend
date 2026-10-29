@@ -693,10 +693,12 @@ export const endpoints = {
       entityId: string,
       file: File,
       description?: string,
+      customerVisible = false,
     ) => {
       const form = new FormData();
       form.append("file", file);
       if (description) form.append("description", description);
+      form.append("customer_visible", String(customerVisible));
       return api<unknown>(`/attachments/${entityType}/${entityId}`, {
         method: "POST",
         body: form,

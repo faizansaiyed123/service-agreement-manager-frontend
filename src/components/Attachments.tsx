@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import type { FormEvent } from "react";
 import { endpoints } from "../lib/api";
+import type { User } from "../types";
 import { Button, EmptyState, Input, Modal, TextArea } from "./ui";
 
 export type AttachmentEntity =
@@ -17,6 +19,7 @@ interface Attachment {
   content_type: string;
   size_bytes: number;
   description: string | null;
+  customer_visible: boolean;
   created_at: string;
 }
 
@@ -27,12 +30,16 @@ export function Attachments({
   entityType: AttachmentEntity;
   entityId: string;
 }) {
+  const { user } = useOutletContext<{ user: User | null }>();
+  const canManageSharing = Boolean(user && ["owner", "admin"].includes(user.role));
   const [items, setItems] = useState<Attachment[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [description, setDescription] = useState("");
+  const [customerVisible, setCustomerVisible] = useState(false);
   const [editing, setEditing] = useState<Attachment | null>(null);
   const [editDescription, setEditDescription] = useState("");
+  const [editCustomerVisible, setEditCustomerVisible] = useState(false);
   const [savingDescription, setSavingDescription] = useState(false);
 
   async function load() {
@@ -61,9 +68,11 @@ export function Attachments({
         entityId,
         file,
         description,
+        canManageSharing && customerVisible,
       )) as Attachment;
       setItems((current) => [item, ...current]);
       setDescription("");
+      setCustomerVisible(false);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Unable to upload attachment",
@@ -100,6 +109,7 @@ export function Attachments({
     try {
       const updated = (await endpoints.attachments.update(editing.id, {
         description: editDescription.trim() || null,
+        ...(canManageSharing ? { customer_visible: editCustomerVisible } : {}),
       })) as Attachment;
       setItems((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
@@ -159,6 +169,16 @@ export function Attachments({
         value={description}
         onChange={(event) => setDescription(event.target.value)}
       />
+      {canManageSharing && (
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={customerVisible}
+            onChange={(event) => setCustomerVisible(event.target.checked)}
+          />
+          Share this upload with the customer in their portal
+        </label>
+      )}
       {error && (
         <div className="error-banner" role="alert">
           {error}
@@ -173,6 +193,11 @@ export function Attachments({
                 <span>
                   {Math.max(1, Math.round(item.size_bytes / 1024))} KB ·{" "}
                   {item.description || item.content_type}
+                  {canManageSharing && (
+                    <span className="table-sub">
+                      {item.customer_visible ? "Shared with customer" : "Private to your team"}
+                    </span>
+                  )}
                 </span>
               </div>
               <div className="row-actions">
@@ -181,6 +206,7 @@ export function Attachments({
                   onClick={() => {
                     setEditing(item);
                     setEditDescription(item.description || "");
+                    setEditCustomerVisible(item.customer_visible);
                   }}
                 >
                   Edit details
@@ -228,6 +254,16 @@ export function Attachments({
                 placeholder="Describe what this document contains"
               />
             </label>
+            {canManageSharing && (
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={editCustomerVisible}
+                  onChange={(event) => setEditCustomerVisible(event.target.checked)}
+                />
+                Share with customer in their portal
+              </label>
+            )}
             {error && (
               <div className="error-banner" role="alert">
                 {error}
