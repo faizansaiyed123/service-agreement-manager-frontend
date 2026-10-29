@@ -340,22 +340,32 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   const invitationNotificationBody = readNotificationBody(technicianEmail, 'team.technician_invited');
   const inviteMatch = invitationNotificationBody.match(/\/team\/invitation\/([^\s/]+)/);
   expect(inviteMatch, invitationNotificationBody).not.toBeNull();
-  const activation = await page.request.post(
-    API + '/api/v1/team/invitations/public/' + encodeURIComponent(inviteMatch[1]) + '/accept',
-    {
-      data: { password: technicianPassword },
-      headers: { Origin: 'http://127.0.0.1:4173' },
-    },
-  );
-  expect(activation.status()).toBe(201);
-  const session = await activation.json();
-  const meResponse = await page.request.get(API + '/api/v1/auth/me', {
-    headers: { Authorization: 'Bearer ' + session.access_token },
-  });
-  expect(meResponse.status()).toBe(200);
-  const technician = await meResponse.json();
-  expect(technician.role).toBe('technician');
-  expect(technician.is_active).toBe(true);
+  // Use an isolated browser context so accepting the invite doesn't replace
+  // the Owner's session. The actual browser sends a trusted Origin and receives
+  // HttpOnly session cookies rather than bearer tokens in the response body.
+  const browser = page.context().browser();
+  expect(browser).not.toBeNull();
+  const technicianContext = await browser.newContext();
+  let technician;
+  try {
+    const technicianPage = await technicianContext.newPage();
+    const invitationUrl = new URL(
+      '/team/invitation/' + encodeURIComponent(inviteMatch[1]),
+      page.url(),
+    ).toString();
+    await technicianPage.goto(invitationUrl);
+    await expect(technicianPage.getByRole('heading', { name: /Join / })).toBeVisible();
+    await technicianPage.getByLabel('Choose a password', { exact: true }).fill(technicianPassword);
+    await technicianPage.getByRole('button', { name: 'Activate technician account', exact: true }).click();
+    await expect(technicianPage).toHaveURL(/\\/my-work\\/?$/);
+    const technicianSession = await readApiFromBrowser(technicianPage, '/auth/me');
+    expect(technicianSession.status).toBe(200);
+    technician = technicianSession.body;
+    expect(technician.role).toBe('technician');
+    expect(technician.is_active).toBe(true);
+  } finally {
+    await technicianContext.close();
+  }
 
   await page.goto('/operations');
   await expect(page.getByRole('heading', { name: 'Operations' })).toBeVisible();
