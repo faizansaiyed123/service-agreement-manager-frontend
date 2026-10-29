@@ -2,15 +2,32 @@ import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { endpoints } from "../lib/api";
 import type { Company, Customer, User } from "../types";
-import { Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Select, Spinner } from "../components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Input,
+  Modal,
+  PageHeader,
+  Select,
+  Spinner,
+} from "../components/ui";
 
 type RecurringSchedule = {
-  id: string; name: string; frequency: string; next_invoice_date: string;
-  auto_issue: boolean; is_active: boolean; last_run_error: string | null;
+  id: string;
+  name: string;
+  frequency: string;
+  next_invoice_date: string;
+  auto_issue: boolean;
+  is_active: boolean;
+  last_run_error: string | null;
 };
 
 export function SettingsPage() {
-  const [tab, setTab] = useState<"company" | "team" | "security" | "recurring">("company");
+  const [tab, setTab] = useState<
+    "company" | "team" | "security" | "recurring"
+  >("company");
   const [company, setCompany] = useState<Company | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [recurring, setRecurring] = useState<RecurringSchedule[]>([]);
@@ -18,143 +35,917 @@ export function SettingsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([endpoints.company.get(), endpoints.users.list("limit=100"), endpoints.recurring.list()])
+    Promise.all([
+      endpoints.company.get(),
+      endpoints.users.list("limit=100"),
+      endpoints.recurring.list(),
+    ])
       .then(([companyData, userData, recurringData]) => {
-        setCompany(companyData); setUsers(userData); setRecurring(recurringData as RecurringSchedule[]);
+        setCompany(companyData);
+        setUsers(userData);
+        setRecurring(recurringData as RecurringSchedule[]);
       })
-      .catch(cause => setError(cause instanceof Error ? cause.message : "Unable to load settings"))
+      .catch((cause) =>
+        setError(
+          cause instanceof Error ? cause.message : "Unable to load settings",
+        ),
+      )
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="center-load"><Spinner /></div>;
-
-  return <div>
-    <PageHeader eyebrow="Administration" title="Settings" description="Manage company identity, team access, password security and recurring billing schedules." />
-    <div className="module-tabs">
-      <button className={tab === "company" ? "module-tab active" : "module-tab"} onClick={() => setTab("company")}>Company</button>
-      <button className={tab === "team" ? "module-tab active" : "module-tab"} onClick={() => setTab("team")}>Team</button>
-      <button className={tab === "security" ? "module-tab active" : "module-tab"} onClick={() => setTab("security")}>Security</button>
-      <button className={tab === "recurring" ? "module-tab active" : "module-tab"} onClick={() => setTab("recurring")}>Recurring billing</button>
-    </div>
-    {error && <div className="error-banner page-error">{error}</div>}
-    {tab === "company" && company && <CompanyPanel company={company} onSaved={setCompany} />}
-    {tab === "team" && <TeamPanel users={users} onCreated={user => setUsers(current => [...current, user])} onChanged={user => setUsers(current => current.map(item => item.id === user.id ? user : item))} />}
-    {tab === "security" && <SecurityPanel />}
-    {tab === "recurring" && <RecurringPanel schedules={recurring} onChanged={setRecurring} />}
-  </div>;
-}
-
-function CompanyPanel({ company, onSaved }: { company: Company; onSaved: (company: Company) => void }) {
-  const [form, setForm] = useState({ name: company.name, legalName: company.legal_name || "", timezone: company.timezone, currency: company.currency });
-  const [busy, setBusy] = useState(false), [message, setMessage] = useState("");
-  async function submit(event: FormEvent) {
-    event.preventDefault(); setBusy(true); setMessage("");
-    try {
-      onSaved(await endpoints.company.update({ name: form.name, legal_name: form.legalName || null, timezone: form.timezone, currency: form.currency }));
-      setMessage("Company settings saved.");
-    } catch (cause) { setMessage(cause instanceof Error ? cause.message : "Unable to save company"); }
-    finally { setBusy(false); }
+  if (loading) {
+    return (
+      <div className="center-load">
+        <Spinner />
+      </div>
+    );
   }
-  return <Card><form className="settings-form form-grid" onSubmit={submit}>
-    <div><span className="eyebrow">Workspace identity</span><h3>{company.name}</h3></div>
-    <label>Company name<Input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} minLength={2} required /></label>
-    <label>Legal name<Input value={form.legalName} onChange={event => setForm({ ...form, legalName: event.target.value })} /></label>
-    <div className="form-two">
-      <label>Timezone<Input value={form.timezone} onChange={event => setForm({ ...form, timezone: event.target.value })} /></label>
-      <label>Currency<Select value={form.currency} onChange={event => setForm({ ...form, currency: event.target.value })}><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="INR">INR</option><option value="AUD">AUD</option><option value="CAD">CAD</option></Select></label>
+
+  return (
+    <div>
+      <PageHeader
+        eyebrow="Administration"
+        title="Settings"
+        description="Manage company identity, team access, password security and recurring billing schedules."
+      />
+      <div className="module-tabs">
+        <button
+          className={tab === "company" ? "module-tab active" : "module-tab"}
+          onClick={() => setTab("company")}
+        >
+          Company
+        </button>
+        <button
+          className={tab === "team" ? "module-tab active" : "module-tab"}
+          onClick={() => setTab("team")}
+        >
+          Team
+        </button>
+        <button
+          className={tab === "security" ? "module-tab active" : "module-tab"}
+          onClick={() => setTab("security")}
+        >
+          Security
+        </button>
+        <button
+          className={tab === "recurring" ? "module-tab active" : "module-tab"}
+          onClick={() => setTab("recurring")}
+        >
+          Recurring billing
+        </button>
+      </div>
+      {error && <div className="error-banner page-error">{error}</div>}
+      {tab === "company" && company && (
+        <CompanyPanel company={company} onSaved={setCompany} />
+      )}
+      {tab === "team" && (
+        <TeamPanel
+          users={users}
+          onCreated={(user) => setUsers((current) => [...current, user])}
+          onChanged={(user) =>
+            setUsers((current) =>
+              current.map((item) => (item.id === user.id ? user : item)),
+            )
+          }
+        />
+      )}
+      {tab === "security" && <SecurityPanel />}
+      {tab === "recurring" && (
+        <RecurringPanel schedules={recurring} onChanged={setRecurring} />
+      )}
     </div>
-    {message && <div className={message === "Company settings saved." ? "success-banner" : "error-banner"}>{message}</div>}
-    <Button disabled={busy}>{busy ? "Saving…" : "Save company settings"}</Button>
-  </form></Card>;
+  );
 }
 
-function TeamPanel({ users, onCreated, onChanged }: { users: User[]; onCreated: (user: User) => void; onChanged: (user: User) => void }) {
-  const [open, setOpen] = useState(false), [resetUser, setResetUser] = useState<User | null>(null);
-  return <div>
-    <div className="page-actions settings-action"><Button onClick={() => setOpen(true)}>Add team member</Button></div>
-    <Card>{users.length ? <div className="table-wrap"><table><thead><tr><th>Member</th><th>Role</th><th>Status</th><th /></tr></thead><tbody>
-      {users.map(user => <tr key={user.id}><td><strong>{user.full_name}</strong><span className="table-sub">{user.email}</span></td><td className="capitalize">{user.role}</td><td><Badge tone={user.is_active ? "success" : "neutral"}>{user.is_active ? "Active" : "Inactive"}</Badge></td><td><UserActions user={user} onChanged={onChanged} onReset={setResetUser} /></td></tr>)}
-    </tbody></table></div> : <EmptyState title="No team members" description="Add staff or managers to collaborate securely." />}</Card>
-    {open && <UserModal onClose={() => setOpen(false)} onCreated={user => { onCreated(user); setOpen(false); }} />}
-    {resetUser && <ResetUserModal user={resetUser} onClose={() => setResetUser(null)} />}
-  </div>;
-}
-function UserActions({ user, onChanged, onReset }: { user: User; onChanged: (user: User) => void; onReset: (user: User) => void }) {
-  async function toggle() { try { onChanged(await endpoints.users.update(user.id, { is_active: !user.is_active })); } catch { /* Keep unchanged if rejected. */ } }
-  return <div className="row-actions"><button className="text-button" onClick={() => void toggle()}>{user.is_active ? "Deactivate" : "Activate"}</button><button className="text-button" onClick={() => onReset(user)}>Reset password</button></div>;
-}
-function UserModal({ onClose, onCreated }: { onClose: () => void; onCreated: (user: User) => void }) {
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "staff" }), [error, setError] = useState(""), [busy, setBusy] = useState(false);
-  async function submit(event: FormEvent) {
-    event.preventDefault(); setBusy(true); setError("");
-    try { onCreated(await endpoints.users.create({ full_name: form.name, email: form.email, password: form.password, role: form.role })); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to create user"); }
-    finally { setBusy(false); }
-  }
-  return <Modal title="Add team member" onClose={onClose}><form className="form-grid" onSubmit={submit}>
-    <div className="form-two"><label>Full name<Input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} required /></label><label>Email<Input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} required /></label></div>
-    <div className="form-two"><label>Password<Input type="password" minLength={12} value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} required /></label><label>Role<Select value={form.role} onChange={event => setForm({ ...form, role: event.target.value })}><option value="staff">Staff</option><option value="technician">Technician</option><option value="billing">Billing</option><option value="manager">Manager</option><option value="admin">Admin</option></Select></label></div>
-    {error && <div className="error-banner">{error}</div>}<Button disabled={busy}>{busy ? "Creating…" : "Create member"}</Button>
-  </form></Modal>;
-}
-function ResetUserModal({ user, onClose }: { user: User; onClose: () => void }) {
-  const [password, setPassword] = useState(""), [confirm, setConfirm] = useState(""), [error, setError] = useState(""), [done, setDone] = useState(false), [busy, setBusy] = useState(false);
+function CompanyPanel({
+  company,
+  onSaved,
+}: {
+  company: Company;
+  onSaved: (company: Company) => void;
+}) {
+  const [form, setForm] = useState({
+    name: company.name,
+    legalName: company.legal_name || "",
+    timezone: company.timezone,
+    currency: company.currency,
+  });
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (password !== confirm) { setError("Passwords do not match."); return; }
-    setBusy(true); setError("");
-    try { await endpoints.users.resetPassword(user.id, { new_password: password }); setDone(true); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to reset password"); }
-    finally { setBusy(false); }
+    setBusy(true);
+    setMessage("");
+
+    try {
+      onSaved(
+        await endpoints.company.update({
+          name: form.name,
+          legal_name: form.legalName || null,
+          timezone: form.timezone,
+          currency: form.currency,
+        }),
+      );
+      setMessage("Company settings saved.");
+    } catch (cause) {
+      setMessage(
+        cause instanceof Error ? cause.message : "Unable to save company",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
-  return <Modal title={"Reset password · " + user.full_name} onClose={onClose}><form className="form-grid" onSubmit={submit}><p className="muted">This invalidates the member's active sessions.</p><label>New password<Input type="password" minLength={12} value={password} onChange={event => setPassword(event.target.value)} required /></label><label>Confirm password<Input type="password" minLength={12} value={confirm} onChange={event => setConfirm(event.target.value)} required /></label>{done && <div className="success-banner">Password reset successfully.</div>}{error && <div className="error-banner">{error}</div>}<Button disabled={busy || done}>{busy ? "Resetting…" : done ? "Password reset" : "Reset password"}</Button></form></Modal>;
+
+  return (
+    <Card>
+      <form className="settings-form form-grid" onSubmit={submit}>
+        <div>
+          <span className="eyebrow">Workspace identity</span>
+          <h3>{company.name}</h3>
+        </div>
+        <label>
+          Company name
+          <Input
+            value={form.name}
+            onChange={(event) => setForm({ ...form, name: event.target.value })}
+            minLength={2}
+            required
+          />
+        </label>
+        <label>
+          Legal name
+          <Input
+            value={form.legalName}
+            onChange={(event) =>
+              setForm({ ...form, legalName: event.target.value })
+            }
+          />
+        </label>
+        <div className="form-two">
+          <label>
+            Timezone
+            <Input
+              value={form.timezone}
+              onChange={(event) =>
+                setForm({ ...form, timezone: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            Currency
+            <Select
+              value={form.currency}
+              onChange={(event) =>
+                setForm({ ...form, currency: event.target.value })
+              }
+            >
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="INR">INR</option>
+              <option value="AUD">AUD</option>
+              <option value="CAD">CAD</option>
+            </Select>
+          </label>
+        </div>
+        {message && (
+          <div
+            className={
+              message === "Company settings saved."
+                ? "success-banner"
+                : "error-banner"
+            }
+          >
+            {message}
+          </div>
+        )}
+        <Button disabled={busy}>
+          {busy ? "Saving…" : "Save company settings"}
+        </Button>
+      </form>
+    </Card>
+  );
+}
+
+function TeamPanel({
+  users,
+  onCreated,
+  onChanged,
+}: {
+  users: User[];
+  onCreated: (user: User) => void;
+  onChanged: (user: User) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [resetUser, setResetUser] = useState<User | null>(null);
+
+  return (
+    <div>
+      <div className="page-actions settings-action">
+        <Button onClick={() => setOpen(true)}>Add team member</Button>
+      </div>
+      <Card>
+        {users.length ? (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id}>
+                    <td>
+                      <strong>{user.full_name}</strong>
+                      <span className="table-sub">{user.email}</span>
+                    </td>
+                    <td className="capitalize">{user.role}</td>
+                    <td>
+                      <Badge tone={user.is_active ? "success" : "neutral"}>
+                        {user.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </td>
+                    <td>
+                      <UserActions
+                        user={user}
+                        onChanged={onChanged}
+                        onReset={setResetUser}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            title="No team members"
+            description="Add staff or managers to collaborate securely."
+          />
+        )}
+      </Card>
+      {open && (
+        <UserModal
+          onClose={() => setOpen(false)}
+          onCreated={(user) => {
+            onCreated(user);
+            setOpen(false);
+          }}
+        />
+      )}
+      {resetUser && (
+        <ResetUserModal
+          user={resetUser}
+          onClose={() => setResetUser(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function UserActions({
+  user,
+  onChanged,
+  onReset,
+}: {
+  user: User;
+  onChanged: (user: User) => void;
+  onReset: (user: User) => void;
+}) {
+  async function toggle() {
+    try {
+      onChanged(
+        await endpoints.users.update(user.id, {
+          is_active: !user.is_active,
+        }),
+      );
+    } catch {
+      /* Keep unchanged if rejected. */
+    }
+  }
+
+  return (
+    <div className="row-actions">
+      <button className="text-button" onClick={() => void toggle()}>
+        {user.is_active ? "Deactivate" : "Activate"}
+      </button>
+      <button className="text-button" onClick={() => onReset(user)}>
+        Reset password
+      </button>
+    </div>
+  );
+}
+
+function UserModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (user: User) => void;
+}) {
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "staff",
+  });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      onCreated(
+        await endpoints.users.create({
+          full_name: form.name,
+          email: form.email,
+          password: form.password,
+          role: form.role,
+        }),
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to create user");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title="Add team member" onClose={onClose}>
+      <form className="form-grid" onSubmit={submit}>
+        <div className="form-two">
+          <label>
+            Full name
+            <Input
+              value={form.name}
+              onChange={(event) => setForm({ ...form, name: event.target.value })}
+              required
+            />
+          </label>
+          <label>
+            Email
+            <Input
+              type="email"
+              value={form.email}
+              onChange={(event) =>
+                setForm({ ...form, email: event.target.value })
+              }
+              required
+            />
+          </label>
+        </div>
+        <div className="form-two">
+          <label>
+            Password
+            <Input
+              type="password"
+              minLength={12}
+              value={form.password}
+              onChange={(event) =>
+                setForm({ ...form, password: event.target.value })
+              }
+              required
+            />
+          </label>
+          <label>
+            Role
+            <Select
+              value={form.role}
+              onChange={(event) => setForm({ ...form, role: event.target.value })}
+            >
+              <option value="staff">Staff</option>
+              <option value="technician">Technician</option>
+              <option value="billing">Billing</option>
+              <option value="manager">Manager</option>
+              <option value="admin">Admin</option>
+            </Select>
+          </label>
+        </div>
+        {error && <div className="error-banner">{error}</div>}
+        <Button disabled={busy}>
+          {busy ? "Creating…" : "Create member"}
+        </Button>
+      </form>
+    </Modal>
+  );
+}
+
+function ResetUserModal({
+  user,
+  onClose,
+}: {
+  user: User;
+  onClose: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+
+    if (password !== confirm) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+
+    try {
+      await endpoints.users.resetPassword(user.id, {
+        new_password: password,
+      });
+      setDone(true);
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "Unable to reset password",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title={"Reset password · " + user.full_name} onClose={onClose}>
+      <form className="form-grid" onSubmit={submit}>
+        <p className="muted">This invalidates the member's active sessions.</p>
+        <label>
+          New password
+          <Input
+            type="password"
+            minLength={12}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+        </label>
+        <label>
+          Confirm password
+          <Input
+            type="password"
+            minLength={12}
+            value={confirm}
+            onChange={(event) => setConfirm(event.target.value)}
+            required
+          />
+        </label>
+        {done && (
+          <div className="success-banner">Password reset successfully.</div>
+        )}
+        {error && <div className="error-banner">{error}</div>}
+        <Button disabled={busy || done}>
+          {busy ? "Resetting…" : done ? "Password reset" : "Reset password"}
+        </Button>
+      </form>
+    </Modal>
+  );
 }
 
 function SecurityPanel() {
-  const [form, setForm] = useState({ current: "", next: "", confirm: "" }), [message, setMessage] = useState(""), [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({ current: "", next: "", confirm: "" });
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (form.next !== form.confirm) { setMessage("New passwords do not match."); return; }
-    setBusy(true); setMessage("");
-    try { await endpoints.auth.changePassword({ current_password: form.current, new_password: form.next }); setForm({ current: "", next: "", confirm: "" }); setMessage("Password changed. Other sessions have been revoked."); }
-    catch (cause) { setMessage(cause instanceof Error ? cause.message : "Unable to change password"); }
-    finally { setBusy(false); }
-  }
-  return <Card><form className="form-grid settings-form" onSubmit={submit}><div><span className="eyebrow">Account security</span><h3>Change password</h3></div><label>Current password<Input type="password" value={form.current} onChange={event => setForm({ ...form, current: event.target.value })} required /></label><div className="form-two"><label>New password<Input type="password" minLength={12} value={form.next} onChange={event => setForm({ ...form, next: event.target.value })} required /></label><label>Confirm new password<Input type="password" minLength={12} value={form.confirm} onChange={event => setForm({ ...form, confirm: event.target.value })} required /></label></div>{message && <div className={message.startsWith("Password") ? "success-banner" : "error-banner"}>{message}</div>}<Button disabled={busy}>{busy ? "Changing…" : "Change password"}</Button></form></Card>;
-}
 
-function RecurringPanel({ schedules, onChanged }: { schedules: RecurringSchedule[]; onChanged: (next: RecurringSchedule[]) => void }) {
-  const [open, setOpen] = useState(false);
-  async function toggle(item: RecurringSchedule) {
-    try { const updated = await endpoints.recurring.action(item.id, item.is_active ? "pause" : "resume") as RecurringSchedule; onChanged(schedules.map(current => current.id === item.id ? updated : current)); }
-    catch {}
-  }
-  return <div><div className="page-actions settings-action"><Button onClick={() => setOpen(true)}>Add recurring schedule</Button></div><Card>{schedules.length ? <div className="table-wrap"><table><thead><tr><th>Schedule</th><th>Frequency</th><th>Next invoice</th><th>Auto issue</th><th>Status</th><th /></tr></thead><tbody>
-    {schedules.map(item => <tr key={item.id}><td><strong>{item.name}</strong><span className="table-sub">{item.last_run_error || "Recurring invoice template"}</span></td><td className="capitalize">{item.frequency.replace("_", " ")}</td><td>{item.next_invoice_date}</td><td>{item.auto_issue ? "Yes" : "No"}</td><td><Badge tone={item.is_active ? "success" : "neutral"}>{item.is_active ? "Active" : "Paused"}</Badge></td><td><button className="text-button" onClick={() => void toggle(item)}>{item.is_active ? "Pause" : "Resume"}</button></td></tr>)}
-  </tbody></table></div> : <EmptyState title="No recurring billing" description="Create a schedule to generate repeat invoices automatically." />}</Card>{open && <RecurringModal onClose={() => setOpen(false)} onCreated={item => { onChanged([item as RecurringSchedule, ...schedules]); setOpen(false); }} />}</div>;
-}
+    if (form.next !== form.confirm) {
+      setMessage("New passwords do not match.");
+      return;
+    }
 
-function RecurringModal({ onClose, onCreated }: { onClose: () => void; onCreated: (item: unknown) => void }) {
-  const [customers, setCustomers] = useState<Customer[]>([]), [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]), [agreements, setAgreements] = useState<Array<{ id: string; agreement_number: string }>>([]);
-  const [form, setForm] = useState({ customerId: "", locationId: "", agreementId: "", name: "", frequency: "monthly", nextDate: new Date().toISOString().slice(0, 10), dueDays: "30", code: "SERVICE", description: "Service", price: "0", autoIssue: true });
-  const [error, setError] = useState(""), [busy, setBusy] = useState(false);
-  useEffect(() => { endpoints.customers.list("status=active&limit=100").then(items => { setCustomers(items); if (items[0]) setForm(current => ({ ...current, customerId: items[0].id })); }).catch(cause => setError(cause instanceof Error ? cause.message : "Unable to load customers")); }, []);
-  useEffect(() => { if (!form.customerId) return; Promise.all([endpoints.customers.locations(form.customerId), endpoints.agreements.list("customer_id=" + form.customerId + "&status=active&limit=100")]).then(([locationsData, agreementData]) => { setLocations(locationsData); setAgreements(agreementData); setForm(current => ({ ...current, locationId: locationsData[0]?.id || "", agreementId: agreementData[0]?.id || "" })); }).catch(cause => setError(cause instanceof Error ? cause.message : "Unable to load customer context")); }, [form.customerId]);
-  async function submit(event: FormEvent) {
-    event.preventDefault(); setBusy(true); setError("");
+    setBusy(true);
+    setMessage("");
+
     try {
-      const item = await endpoints.recurring.create({ customer_id: form.customerId, service_location_id: form.locationId || null, agreement_id: form.agreementId || null, name: form.name, frequency: form.frequency, next_invoice_date: form.nextDate, due_days: Number(form.dueDays), auto_issue: form.autoIssue, lines: [{ service_code: form.code, description: form.description, quantity: "1", unit_price: form.price }] });
-      onCreated(item);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Unable to create recurring schedule"); }
-    finally { setBusy(false); }
+      await endpoints.auth.changePassword({
+        current_password: form.current,
+        new_password: form.next,
+      });
+      setForm({ current: "", next: "", confirm: "" });
+      setMessage("Password changed. Other sessions have been revoked.");
+    } catch (cause) {
+      setMessage(
+        cause instanceof Error ? cause.message : "Unable to change password",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
-  return <Modal title="Add recurring invoice schedule" onClose={onClose}><form className="form-grid" onSubmit={submit}>
-    <div className="form-two"><label>Customer<Select value={form.customerId} onChange={event => setForm({ ...form, customerId: event.target.value })}>{customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</Select></label><label>Service location<Select value={form.locationId} onChange={event => setForm({ ...form, locationId: event.target.value })}><option value="">None</option>{locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}</Select></label></div>
-    <label>Agreement<Select value={form.agreementId} onChange={event => setForm({ ...form, agreementId: event.target.value })}><option value="">None</option>{agreements.map(agreement => <option key={agreement.id} value={agreement.id}>{agreement.agreement_number}</option>)}</Select></label>
-    <label>Name<Input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} minLength={2} required /></label>
-    <div className="form-three"><label>Frequency<Select value={form.frequency} onChange={event => setForm({ ...form, frequency: event.target.value })}><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="semi_annual">Semi-annual</option><option value="annual">Annual</option></Select></label><label>Next invoice<Input type="date" value={form.nextDate} onChange={event => setForm({ ...form, nextDate: event.target.value })} required /></label><label>Due days<Input type="number" min="0" max="365" value={form.dueDays} onChange={event => setForm({ ...form, dueDays: event.target.value })} /></label></div>
-    <div className="form-three"><label>Service code<Input value={form.code} onChange={event => setForm({ ...form, code: event.target.value })} required /></label><label>Description<Input value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} required /></label><label>Unit price<Input type="number" step="0.01" min="0" value={form.price} onChange={event => setForm({ ...form, price: event.target.value })} required /></label></div>
-    <label className="checkbox-label"><input type="checkbox" checked={form.autoIssue} onChange={event => setForm({ ...form, autoIssue: event.target.checked })} /> Auto-issue invoices</label>
-    {error && <div className="error-banner">{error}</div>}<Button disabled={busy || !form.customerId}>{busy ? "Creating…" : "Create schedule"}</Button>
-  </form></Modal>;
+
+  return (
+    <Card>
+      <form className="form-grid settings-form" onSubmit={submit}>
+        <div>
+          <span className="eyebrow">Account security</span>
+          <h3>Change password</h3>
+        </div>
+        <label>
+          Current password
+          <Input
+            type="password"
+            value={form.current}
+            onChange={(event) =>
+              setForm({ ...form, current: event.target.value })
+            }
+            required
+          />
+        </label>
+        <div className="form-two">
+          <label>
+            New password
+            <Input
+              type="password"
+              minLength={12}
+              value={form.next}
+              onChange={(event) => setForm({ ...form, next: event.target.value })}
+              required
+            />
+          </label>
+          <label>
+            Confirm new password
+            <Input
+              type="password"
+              minLength={12}
+              value={form.confirm}
+              onChange={(event) =>
+                setForm({ ...form, confirm: event.target.value })
+              }
+              required
+            />
+          </label>
+        </div>
+        {message && (
+          <div
+            className={
+              message.startsWith("Password")
+                ? "success-banner"
+                : "error-banner"
+            }
+          >
+            {message}
+          </div>
+        )}
+        <Button disabled={busy}>
+          {busy ? "Changing…" : "Change password"}
+        </Button>
+      </form>
+    </Card>
+  );
+}
+
+function RecurringPanel({
+  schedules,
+  onChanged,
+}: {
+  schedules: RecurringSchedule[];
+  onChanged: (next: RecurringSchedule[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  async function toggle(item: RecurringSchedule) {
+    try {
+      const updated = (await endpoints.recurring.action(
+        item.id,
+        item.is_active ? "pause" : "resume",
+      )) as RecurringSchedule;
+      onChanged(
+        schedules.map((current) => (current.id === item.id ? updated : current)),
+      );
+    } catch {}
+  }
+
+  return (
+    <div>
+      <div className="page-actions settings-action">
+        <Button onClick={() => setOpen(true)}>Add recurring schedule</Button>
+      </div>
+      <Card>
+        {schedules.length ? (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Schedule</th>
+                  <th>Frequency</th>
+                  <th>Next invoice</th>
+                  <th>Auto issue</th>
+                  <th>Status</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {schedules.map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <strong>{item.name}</strong>
+                      <span className="table-sub">
+                        {item.last_run_error || "Recurring invoice template"}
+                      </span>
+                    </td>
+                    <td className="capitalize">
+                      {item.frequency.replace("_", " ")}
+                    </td>
+                    <td>{item.next_invoice_date}</td>
+                    <td>{item.auto_issue ? "Yes" : "No"}</td>
+                    <td>
+                      <Badge tone={item.is_active ? "success" : "neutral"}>
+                        {item.is_active ? "Active" : "Paused"}
+                      </Badge>
+                    </td>
+                    <td>
+                      <button
+                        className="text-button"
+                        onClick={() => void toggle(item)}
+                      >
+                        {item.is_active ? "Pause" : "Resume"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            title="No recurring billing"
+            description="Create a schedule to generate repeat invoices automatically."
+          />
+        )}
+      </Card>
+      {open && (
+        <RecurringModal
+          onClose={() => setOpen(false)}
+          onCreated={(item) => {
+            onChanged([item as RecurringSchedule, ...schedules]);
+            setOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function RecurringModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (item: unknown) => void;
+}) {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [agreements, setAgreements] = useState<
+    Array<{ id: string; agreement_number: string }>
+  >([]);
+  const [form, setForm] = useState({
+    customerId: "",
+    locationId: "",
+    agreementId: "",
+    name: "",
+    frequency: "monthly",
+    nextDate: new Date().toISOString().slice(0, 10),
+    dueDays: "30",
+    code: "SERVICE",
+    description: "Service",
+    price: "0",
+    autoIssue: true,
+  });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    endpoints.customers
+      .list("status=active&limit=100")
+      .then((items) => {
+        setCustomers(items);
+        if (items[0]) {
+          setForm((current) => ({ ...current, customerId: items[0].id }));
+        }
+      })
+      .catch((cause) =>
+        setError(
+          cause instanceof Error ? cause.message : "Unable to load customers",
+        ),
+      );
+  }, []);
+
+  useEffect(() => {
+    if (!form.customerId) return;
+
+    Promise.all([
+      endpoints.customers.locations(form.customerId),
+      endpoints.agreements.list(
+        "customer_id=" + form.customerId + "&status=active&limit=100",
+      ),
+    ])
+      .then(([locationsData, agreementData]) => {
+        setLocations(locationsData);
+        setAgreements(agreementData);
+        setForm((current) => ({
+          ...current,
+          locationId: locationsData[0]?.id || "",
+          agreementId: agreementData[0]?.id || "",
+        }));
+      })
+      .catch((cause) =>
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Unable to load customer context",
+        ),
+      );
+  }, [form.customerId]);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+
+    try {
+      const item = await endpoints.recurring.create({
+        customer_id: form.customerId,
+        service_location_id: form.locationId || null,
+        agreement_id: form.agreementId || null,
+        name: form.name,
+        frequency: form.frequency,
+        next_invoice_date: form.nextDate,
+        due_days: Number(form.dueDays),
+        auto_issue: form.autoIssue,
+        lines: [
+          {
+            service_code: form.code,
+            description: form.description,
+            quantity: "1",
+            unit_price: form.price,
+          },
+        ],
+      });
+      onCreated(item);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Unable to create recurring schedule",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title="Add recurring invoice schedule" onClose={onClose}>
+      <form className="form-grid" onSubmit={submit}>
+        <div className="form-two">
+          <label>
+            Customer
+            <Select
+              value={form.customerId}
+              onChange={(event) =>
+                setForm({ ...form, customerId: event.target.value })
+              }
+            >
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label>
+            Service location
+            <Select
+              value={form.locationId}
+              onChange={(event) =>
+                setForm({ ...form, locationId: event.target.value })
+              }
+            >
+              <option value="">None</option>
+              {locations.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+        <label>
+          Agreement
+          <Select
+            value={form.agreementId}
+            onChange={(event) =>
+              setForm({ ...form, agreementId: event.target.value })
+            }
+          >
+            <option value="">None</option>
+            {agreements.map((agreement) => (
+              <option key={agreement.id} value={agreement.id}>
+                {agreement.agreement_number}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <label>
+          Name
+          <Input
+            value={form.name}
+            onChange={(event) => setForm({ ...form, name: event.target.value })}
+            minLength={2}
+            required
+          />
+        </label>
+        <div className="form-three">
+          <label>
+            Frequency
+            <Select
+              value={form.frequency}
+              onChange={(event) =>
+                setForm({ ...form, frequency: event.target.value })
+              }
+            >
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="semi_annual">Semi-annual</option>
+              <option value="annual">Annual</option>
+            </Select>
+          </label>
+          <label>
+            Next invoice
+            <Input
+              type="date"
+              value={form.nextDate}
+              onChange={(event) => setForm({ ...form, nextDate: event.target.value })}
+              required
+            />
+          </label>
+          <label>
+            Due days
+            <Input
+              type="number"
+              min="0"
+              max="365"
+              value={form.dueDays}
+              onChange={(event) => setForm({ ...form, dueDays: event.target.value })}
+            />
+          </label>
+        </div>
+        <div className="form-three">
+          <label>
+            Service code
+            <Input
+              value={form.code}
+              onChange={(event) => setForm({ ...form, code: event.target.value })}
+              required
+            />
+          </label>
+          <label>
+            Description
+            <Input
+              value={form.description}
+              onChange={(event) =>
+                setForm({ ...form, description: event.target.value })
+              }
+              required
+            />
+          </label>
+          <label>
+            Unit price
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.price}
+              onChange={(event) => setForm({ ...form, price: event.target.value })}
+              required
+            />
+          </label>
+        </div>
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={form.autoIssue}
+            onChange={(event) =>
+              setForm({ ...form, autoIssue: event.target.checked })
+            }
+          />{" "}
+          Auto-issue invoices
+        </label>
+        {error && <div className="error-banner">{error}</div>}
+        <Button disabled={busy || !form.customerId}>
+          {busy ? "Creating…" : "Create schedule"}
+        </Button>
+      </form>
+    </Modal>
+  );
 }
