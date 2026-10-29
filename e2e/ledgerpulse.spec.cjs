@@ -317,9 +317,9 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   expect(technicianResponse.status()).toBe(201);
   const invitation = await technicianResponse.json();
   expect(invitation.status).toBe('pending');
-  const notification = readNotificationBody(technicianEmail, 'team.technician_invited');
-  const inviteMatch = notification.match(/\/team\/invitation\/([^\s/]+)/);
-  expect(inviteMatch, notification).not.toBeNull();
+  const invitationNotificationBody = readNotificationBody(technicianEmail, 'team.technician_invited');
+  const inviteMatch = invitationNotificationBody.match(/\/team\/invitation\/([^\s/]+)/);
+  expect(inviteMatch, invitationNotificationBody).not.toBeNull();
   const activation = await page.request.post(
     API + '/api/v1/team/invitations/public/' + encodeURIComponent(inviteMatch[1]) + '/accept',
     { data: { password: technicianPassword } },
