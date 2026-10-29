@@ -15,6 +15,7 @@ import { CatalogPage, EquipmentPage } from "./pages/Assets";
 import { SettingsPage } from "./pages/Settings";
 import { ReportsPage } from "./pages/Reports";
 import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from "./pages/PasswordRecovery";
+import { AgreementPortalPage } from "./pages/AgreementPortal";
 import { IntegrationsPage } from "./pages/Integrations";
 
 function Protected({ children }: { children: ReactNode }) {
@@ -56,6 +57,7 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/agreement/:token" element={<AgreementPortalPage />} />
 
       <Route element={<Protected><AppShell /></Protected>}>
         <Route path="dashboard" element={<OverviewPage />} />
