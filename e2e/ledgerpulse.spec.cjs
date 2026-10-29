@@ -135,7 +135,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await expect(page.getByRole('heading', { name: 'Agreements' })).toBeVisible();
   await page.getByRole('button', { name: 'New agreement', exact: true }).click();
   await chooseOption(page, page.getByLabel('Customer'), customer.id);
-  await expect(page.getByLabel('Service location')).toHaveValue(location.id);
+  await expect(page.getByLabel('Service location')).toHaveAttribute('data-value', location.id);
   await chooseOption(page, page.getByLabel('Service location'), location.id);
   await page.getByLabel('Agreement title').fill(agreementTitle);
   await page.getByLabel('Service name').fill('Preventive HVAC maintenance');
