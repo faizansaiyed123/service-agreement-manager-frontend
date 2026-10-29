@@ -29,6 +29,7 @@ export function AgreementPortalPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<"accept" | "reject" | null>(null);
   const [reviewed, setReviewed] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [error, setError] = useState("");
@@ -54,8 +55,8 @@ export function AgreementPortalPage() {
 
   async function respond(decision: "accept" | "reject") {
     if (!token || busy) return;
-    if (decision === "accept" && !reviewed) {
-      setError("Please confirm that you reviewed the agreement before accepting it.");
+    if (decision === "accept" && (!reviewed || !authorized)) {
+      setError("Please confirm that you reviewed the agreement and are authorized to accept it on behalf of the customer.");
       return;
     }
     setBusy(decision);
@@ -63,6 +64,7 @@ export function AgreementPortalPage() {
     try {
       const result = await endpoints.agreementPortal.respond(token, {
         decision,
+        acceptance_confirmation: decision === "accept" && reviewed && authorized,
         rejection_reason: decision === "reject" ? rejectionReason.trim() || null : null,
       });
       setAgreement(result);
@@ -140,10 +142,16 @@ export function AgreementPortalPage() {
       {unavailable && <div className="error-banner">This agreement is no longer open for a customer response. Contact the service provider if you need a current version.</div>}
 
       {!finalState && !unavailable && <section className="agreement-portal-decision">
-        <label className="portal-check">
-          <input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} />
-          <span>I have reviewed the agreement details and pricing above.</span>
-        </label>
+        <div className="portal-checklist">
+          <label className="portal-check">
+            <input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} />
+            <span>I have reviewed the agreement details and pricing above.</span>
+          </label>
+          <label className="portal-check">
+            <input type="checkbox" checked={authorized} onChange={event => setAuthorized(event.target.checked)} />
+            <span>I am authorized to accept this agreement on behalf of {agreement.customer_name}.</span>
+          </label>
+        </div>
         {!rejectOpen
           ? <div className="agreement-portal-actions">
               <Button disabled={busy !== null || !reviewed} onClick={() => void respond("accept")}>{busy === "accept" ? "Accepting…" : "Accept agreement"}</Button>
