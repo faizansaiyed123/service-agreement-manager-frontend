@@ -339,6 +339,7 @@ export const endpoints = {
       }),
   },
   schedules: {
+    get: (id: string) => api<unknown>(`/maintenance/schedules/${id}`),
     list: (q = "") =>
       api<unknown[]>(`/maintenance/schedules${q ? `?${q}` : ""}`),
     create: (b: unknown) =>
