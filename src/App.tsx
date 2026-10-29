@@ -14,13 +14,19 @@ import { InvoicesPage } from "./pages/Invoices";
 import { CatalogPage, EquipmentPage } from "./pages/Assets";
 import { SettingsPage } from "./pages/Settings";
 import { ReportsPage } from "./pages/Reports";
-import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from "./pages/PasswordRecovery";
+import {
+  ForgotPasswordPage,
+  ResetPasswordPage,
+  VerifyEmailPage,
+} from "./pages/PasswordRecovery";
 import { AgreementPortalPage } from "./pages/AgreementPortal";
 import { IntegrationsPage } from "./pages/Integrations";
 
 function Protected({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const [status, setStatus] = useState<"checking" | "authenticated" | "unauthenticated">("checking");
+  const [status, setStatus] = useState<
+    "checking" | "authenticated" | "unauthenticated"
+  >("checking");
 
   useEffect(() => {
     let live = true;
@@ -28,9 +34,14 @@ function Protected({ children }: { children: ReactNode }) {
       if (live) setStatus("unauthenticated");
     };
     window.addEventListener("sam:session-expired", onExpired);
-    endpoints.auth.me()
-      .then(() => { if (live) setStatus("authenticated"); })
-      .catch(() => { if (live) setStatus("unauthenticated"); });
+    endpoints.auth
+      .me()
+      .then(() => {
+        if (live) setStatus("authenticated");
+      })
+      .catch(() => {
+        if (live) setStatus("unauthenticated");
+      });
 
     return () => {
       live = false;
@@ -39,21 +50,35 @@ function Protected({ children }: { children: ReactNode }) {
   }, []);
 
   if (status === "checking") {
-    return <div className="center-load" role="status">Checking your session…</div>;
+    return (
+      <div className="center-load" role="status">
+        Checking your session…
+      </div>
+    );
   }
 
-  return status === "authenticated"
-    ? <>{children}</>
-    : <Navigate to="/login" replace state={{ from: location }} />;
+  return status === "authenticated" ? (
+    <>{children}</>
+  ) : (
+    <Navigate to="/login" replace state={{ from: location }} />
+  );
 }
-
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<AuthPage mode="login" />} />
-      <Route path="/register" element={publicRegistrationEnabled ? <AuthPage mode="register" /> : <Navigate to="/login" replace />} />
+      <Route
+        path="/register"
+        element={
+          publicRegistrationEnabled ? (
+            <AuthPage mode="register" />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
