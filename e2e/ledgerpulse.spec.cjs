@@ -379,7 +379,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.getByLabel('Scheduled date', { exact: true }).fill(new Date().toISOString().slice(0, 10));
   await chooseOption(page, page.getByLabel('Priority', { exact: true }), 'high');
   await page.getByLabel('Description', { exact: true }).fill('Synthetic job; no field visit will be performed.');
-  await page.getByLabel(/Required skill \\(optional\\)/).fill('HVAC');
+  await page.getByLabel(/Required skill \(optional\)/).fill('HVAC');
   const workOrderPromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create work order', exact: true }).click();
   const workOrderResponse = await workOrderPromise;
