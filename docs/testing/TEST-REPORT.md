@@ -1,11 +1,11 @@
 # Walkthrough verification record
 
 **Result:** PASS
-**Project source commit:** [2394eeb3d6d18f16c509206c1fec81a8304bf37c](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/2394eeb3d6d18f16c509206c1fec81a8304bf37c)
-**Workflow run:** [Run #40861373464](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/40861373464)
+**Project source commit:** [3b2d6d9e895be35e07401143883a17574756f92f](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/3b2d6d9e895be35e07401143883a17574756f92f)
+**Workflow run:** [Run #40878197061](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/40878197061)
 **Browser journeys:** 4 passed, 0 failed, 0 skipped
 **Screenshots published:** 27
-**Backend pytest:** 89 passed, 0 failed/errors, 3 skipped
+**Backend pytest:** 97 passed, 0 failed/errors, 3 skipped
 **PostgreSQL concurrency tests:** 3 passed, 0 failed/errors, 0 skipped
 
 This report records the automated evidence for the public [product walkthrough](../../visual.md). It is separate from the visitor-facing guide.

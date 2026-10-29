@@ -7,8 +7,8 @@
 **Screenshot directory:** [`docs/testing/visuals/`](docs/testing/visuals/)
 
 ## Completed and verified
-- Main-branch browser workflow passed: [Run #40861373464](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/40861373464).
-- Source revision exercised by the workflow: [2394eeb3d6d18f16c509206c1fec81a8304bf37c](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/2394eeb3d6d18f16c509206c1fec81a8304bf37c).
+- Main-branch browser workflow passed: [Run #40878197061](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/40878197061).
+- Source revision exercised by the workflow: [3b2d6d9e895be35e07401143883a17574756f92f](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/3b2d6d9e895be35e07401143883a17574756f92f).
 - Browser journey result: 4 passed, 0 failed, 0 skipped.
 - Production frontend build and local production preview started successfully as part of the walkthrough.
 - Backend migrations, schema consistency, Ruff, full pytest and PostgreSQL concurrency checks passed in the same run.
@@ -21,7 +21,7 @@
 | Area | Result |
 |---|---|
 | Browser user journeys | 4 passed, 0 failed, 0 skipped |
-| Backend pytest | 89 passed, 0 failed/errors, 3 skipped |
+| Backend pytest | 97 passed, 0 failed/errors, 3 skipped |
 | PostgreSQL concurrency | 3 passed, 0 failed/errors, 0 skipped |
 | Screenshots and image paths | 27 present and checked before publication |
 | Hosted production deployment | Not verified by this local integration run |
