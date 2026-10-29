@@ -357,7 +357,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
     await expect(technicianPage.getByRole('heading', { name: /Join / })).toBeVisible();
     await technicianPage.getByLabel('Choose a password', { exact: true }).fill(technicianPassword);
     await technicianPage.getByRole('button', { name: 'Activate technician account', exact: true }).click();
-    await expect(technicianPage).toHaveURL(new RegExp('/my-work/?
+    await expect(technicianPage).toHaveURL(new RegExp("/my-work/?$"));
     const technicianSession = await readApiFromBrowser(technicianPage, '/auth/me');
     expect(technicianSession.status).toBe(200);
     technician = technicianSession.body;
