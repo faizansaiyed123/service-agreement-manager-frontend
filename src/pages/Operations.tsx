@@ -7,7 +7,7 @@ import type {
   Customer,
   Equipment,
   ServiceLocation,
-  User,
+  TechnicianProfile,
   WorkOrder,
 } from "../types";
 import {
@@ -896,50 +896,96 @@ function AssignModal({
   onClose: () => void;
   onAssigned: (order: WorkOrder) => void;
 }) {
-  const [users, setUsers] = useState<User[]>([]);
+  const [technicians, setTechnicians] = useState<TechnicianProfile[]>([]);
   const [id, setId] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    endpoints.users
-      .list("role=technician&active=true&limit=100")
-      .then((items) => {
-        setUsers(items);
-        setId(items[0]?.id || "");
+    let live = true;
+    endpoints.team.technicians()
+      .then((items) => { if (live) setTechnicians(items); })
+      .catch((cause) => {
+        if (live) setError(cause instanceof Error ? cause.message : "Unable to load technician profiles");
       })
-      .catch((c) =>
-        setError(c instanceof Error ? c.message : "Unable to load technicians"),
-      );
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
   }, []);
+
+  const requiredSkill = order.required_skill ? " ".concat(order.required_skill.split(/\s+/).filter(Boolean).join(" ")).trim().toLowerCase() : "";
+  const eligibleTechnicians = technicians.filter((technician) => {
+    if (!technician.is_active) return false;
+    if (!order.branch_id || !technician.branch_ids.includes(order.branch_id)) return false;
+    return !requiredSkill || technician.skills.some(
+      (skill) => skill.split(/\s+/).filter(Boolean).join(" ").toLowerCase() === requiredSkill,
+    );
+  });
+
+  const selectedIsEligible = eligibleTechnicians.some((technician) => technician.id === id);
+  const firstEligibleId = eligibleTechnicians[0]?.id || "";
+
+  useEffect(() => {
+    if (!selectedIsEligible && id !== firstEligibleId) {
+      setId(firstEligibleId);
+    }
+  }, [id, selectedIsEligible, firstEligibleId]);
+
+  async function assign(event: FormEvent) {
+    event.preventDefault();
+    if (!id || busy || loading) return;
+    setBusy(true);
+    setError("");
+    try {
+      const updated = await endpoints.workOrders.action(order.id, "assign", {
+        technician_user_id: id,
+      });
+      onAssigned(updated);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to assign technician");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <Modal title={"Assign " + order.work_order_number} onClose={onClose}>
-      <form
-        className="form-grid"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          try {
-            const updated = await endpoints.workOrders.action(order.id, "assign", {
-              technician_user_id: id,
-            });
-            onAssigned(updated);
-          } catch (c) {
-            setError(c instanceof Error ? c.message : "Unable to assign");
-          }
-        }}
-      >
-        <label>
-          Technician
-          <Select value={id} onChange={(e) => setId(e.target.value)}>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.full_name}
-              </option>
-            ))}
-          </Select>
-        </label>
-        {error && <div className="error-banner">{error}</div>}
-        <Button disabled={!id}>Assign technician</Button>
+      <form className="form-grid" onSubmit={assign}>
+        <p className="muted">
+          Only active technicians assigned to this branch and matching the required skill are shown.
+        </p>
+        {loading ? (
+          <div className="center-load"><Spinner /></div>
+        ) : eligibleTechnicians.length ? (
+          <label>
+            Eligible technician
+            <Select value={id} onChange={(event) => setId(event.target.value)}>
+              {eligibleTechnicians.map((technician) => (
+                <option key={technician.id} value={technician.id}>
+                  {technician.full_name} · {technician.email}
+                </option>
+              ))}
+            </Select>
+          </label>
+        ) : (
+          <div className="empty-state" role="status">
+            <strong>No compatible technician found</strong>
+            <p>
+              {!order.branch_id
+                ? "This work order has no branch. Set a branch before assigning a technician."
+                : order.required_skill
+                  ? "Add the required skill to an active technician in this branch, or update the work order's skill requirement."
+                  : "Add an active technician to this branch before assigning the work."}
+            </p>
+          </div>
+        )}
+        {error && <div className="error-banner" role="alert">{error}</div>}
+        <div className="modal-actions">
+          <Button type="button" className="btn-secondary" disabled={busy} onClick={onClose}>Cancel</Button>
+          <Button disabled={loading || busy || !id}>
+            {busy ? "Assigning…" : "Assign technician"}
+          </Button>
+        </div>
       </form>
     </Modal>
   );
