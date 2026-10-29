@@ -182,12 +182,59 @@ export interface AgreementPortal {
   lines: AgreementPortalLine[];
 }
 
+export interface InvoicePortalLine {
+  service_code: string;
+  description: string;
+  details: string | null;
+  quantity: string;
+  unit_price: string;
+  line_total: string;
+}
+
+export interface InvoicePortal {
+  invoice_number: string;
+  company_name: string;
+  customer_name: string;
+  recipient_name: string;
+  recipient_email: string;
+  invoice_date: string;
+  due_date: string;
+  issued_at: string | null;
+  currency: string;
+  status: string;
+  subtotal: string;
+  discount_amount: string;
+  tax_amount: string;
+  total_amount: string;
+  amount_paid: string;
+  amount_refunded: string;
+  credits_applied: string;
+  balance_due: string;
+  notes: string | null;
+  expires_at: string;
+  portal_status: "payable" | "paid";
+  lines: InvoicePortalLine[];
+}
+
+export interface InvoicePortalPaymentIntent {
+  payment_intent_id: string;
+  client_secret: string;
+  amount: string;
+  currency: string;
+  test_mode: boolean;
+}
+
 export interface WorkOrder {
   id: string;
   company_id: string;
   branch_id: string | null;
   customer_id: string;
   service_location_id: string;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  service_location_name?: string | null;
+  service_location_address?: string | null;
+  access_instructions?: string | null;
   equipment_id: string | null;
   agreement_id: string | null;
   maintenance_schedule_id: string | null;
