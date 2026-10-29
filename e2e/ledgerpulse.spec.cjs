@@ -392,7 +392,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   const workOrderRow = page.getByRole('row').filter({ hasText: workOrderTitle });
   const assignPromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders/' + workOrder.id + '/assign' && response.request().method() === 'POST');
   await workOrderRow.getByRole('button', { name: 'Assign', exact: true }).click();
-  await chooseOption(page, page.getByLabel('Technician', { exact: true }), technician.id);
+  await chooseOption(page, page.getByLabel('Eligible technician', { exact: true }), technician.id);
   await page.getByRole('button', { name: 'Assign technician', exact: true }).click();
   const assignedResponse = await assignPromise;
   expect(assignedResponse.status()).toBe(200);
