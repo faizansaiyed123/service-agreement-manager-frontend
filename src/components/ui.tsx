@@ -39,6 +39,7 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [fieldLabel, setFieldLabel] = useState("");
   const [menuPosition, setMenuPosition] = useState({
     top: 0,
     left: 0,
@@ -108,6 +109,22 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
       setOpen(false);
     }
   }
+
+  useEffect(() => {
+    const root = rootRef.current;
+    const parentLabel = root?.parentElement;
+    if (!root || !parentLabel || parentLabel.tagName !== "LABEL") return;
+    const childNodes = Array.from(parentLabel.childNodes);
+    const rootIndex = childNodes.indexOf(root);
+    if (rootIndex < 0) return;
+    const labelText = childNodes
+      .slice(0, rootIndex)
+      .map(node => node.textContent ?? "")
+      .join(" ")
+      .replace(/\\s+/g, " ")
+      .trim();
+    if (labelText) setFieldLabel(labelText);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -202,6 +219,7 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
         className={`input select-trigger ${className}`}
         data-value={selectedValue}
         disabled={disabled}
+        aria-label={buttonProps["aria-label"] ?? (fieldLabel || undefined)}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={menuId}
