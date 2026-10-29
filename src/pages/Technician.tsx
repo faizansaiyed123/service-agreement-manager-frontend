@@ -87,6 +87,11 @@ export function TechnicianPage() {
                 <div><span className="eyebrow">{order.work_order_number}</span><h2>{order.title}</h2></div>
                 <Badge tone={statusTone(order.status)}>{order.status.replaceAll("_", " ")}</Badge>
               </div>
+              <div className="technician-customer-details">
+                <div><span className="eyebrow">Customer</span><strong>{order.customer_name || "Customer details unavailable"}</strong>{order.customer_phone && <a href={"tel:" + order.customer_phone}>{order.customer_phone}</a>}</div>
+                <div><span className="eyebrow">Service location</span><strong>{order.service_location_name || "Service location"}</strong>{order.service_location_address && <span>{order.service_location_address}</span>}</div>
+                {order.access_instructions && <div className="technician-access"><span className="eyebrow">Access instructions</span><p>{order.access_instructions}</p></div>}
+              </div>
               <div className="technician-order-meta">
                 <div><span className="eyebrow">Scheduled</span><strong>{dateLabel(order.scheduled_for)}</strong></div>
                 <div><span className="eyebrow">Priority</span><strong className="capitalize">{order.priority}</strong></div>
