@@ -9,7 +9,14 @@ const money = (value: string, currency: string) =>
   new Intl.NumberFormat(undefined, { style: "currency", currency }).format(Number(value));
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(value));
+  const date = value.length === 10
+    ? (() => { const [year, month, day] = value.split("-").map(Number); return new Date(year, month - 1, day); })()
+    : new Date(value);
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(date);
+}
+
+function formatDateTime(value: string | null) {
+  return value ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "the recorded acceptance time";
 }
 
 function PortalShell({ children }: { children: ReactNode }) {
@@ -126,7 +133,7 @@ export function AgreementPortalPage() {
 
       {finalState && <div className={agreement.portal_status === "accepted" ? "success-banner" : "error-banner"} role="status">
         {agreement.portal_status === "accepted"
-          ? <>You accepted this agreement on {agreement.accepted_at ? formatDate(agreement.accepted_at) : "the recorded acceptance date"}.</>
+          ? <>You accepted this agreement on {formatDateTime(agreement.accepted_at)}.</>
           : <>You rejected this agreement{agreement.rejection_reason ? ": " + agreement.rejection_reason : "."}</>}
       </div>}
 
