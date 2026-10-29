@@ -446,7 +446,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await chooseOption(page, page.getByRole('dialog').last().getByLabel('Customer type', { exact: true }), 'commercial');
   await page.getByRole('dialog').last().getByLabel('Email', { exact: true }).fill('recovered-' + unique + '@example.com');
   await page.getByRole('dialog').last().getByLabel('Phone', { exact: true }).fill('5550104');
-  await page.getByRole('dialog').last().getByLabel('Notes', { exact: true }).fill('Corrected during E2E import recovery.');
+  await page.getByRole('dialog').last().locator('textarea').fill('Corrected during E2E import recovery.');
   const correctedRowPromise = page.waitForResponse(response =>
     response.url().includes('/api/v1/customers/imports/' + importJob.id + '/rows/') &&
     response.request().method() === 'PUT');
