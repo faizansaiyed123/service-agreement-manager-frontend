@@ -121,8 +121,9 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
       const placement = belowSpace < preferredHeight && aboveSpace > belowSpace ? "above" : "below";
       const availableSpace = placement === "above" ? aboveSpace : belowSpace;
       const maxHeight = Math.max(100, Math.min(260, availableSpace - 8));
+      const popupHeight = Math.min(preferredHeight, maxHeight);
       setMenuPosition({
-        top: placement === "above" ? Math.max(8, rect.top - maxHeight - 6) : rect.bottom + 6,
+        top: placement === "above" ? Math.max(8, rect.top - popupHeight - 6) : rect.bottom + 6,
         left: Math.max(8, Math.min(rect.left, window.innerWidth - rect.width - 8)),
         width: rect.width,
         maxHeight,
@@ -143,6 +144,12 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
       window.removeEventListener("resize", updatePosition);
     };
   }, [open, options.length]);
+
+  useEffect(() => {
+    if (!open || activeIndex < 0) return;
+    const activeOption = menuRef.current?.querySelector<HTMLElement>(`#${menuId}-option-${activeIndex}`);
+    activeOption?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, menuId, open]);
 
   const menu = open && options.length > 0 ? createPortal(
     <div
