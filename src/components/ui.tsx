@@ -200,6 +200,7 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
         type="button"
         title={title}
         className={`input select-trigger ${className}`}
+        data-value={selectedValue}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
