@@ -152,12 +152,12 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   expect(proposedResponse.status()).toBe(200);
   expect((await proposedResponse.json()).status).toBe('proposed');
 
-  await page.getByRole('button', { name: 'Record acceptance', exact: true }).click();
+  await page.getByRole('button', { name: 'Record manual acceptance', exact: true }).click();
   await page.getByLabel('Accepted by').fill('Morgan Ellis');
   const acceptPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/agreements/' + agreement.id + '/accept' &&
     response.request().method() === 'POST');
-  await page.getByRole('button', { name: 'Save acceptance', exact: true }).click();
+  await page.getByRole('button', { name: 'Save manual acceptance', exact: true }).click();
   const acceptedResponse = await acceptPromise;
   expect(acceptedResponse.status()).toBe(200);
   expect((await acceptedResponse.json()).status).toBe('active');
