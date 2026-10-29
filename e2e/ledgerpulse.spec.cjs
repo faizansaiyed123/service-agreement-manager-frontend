@@ -48,9 +48,9 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   // Incorrect credentials should produce a readable error rather than a blank or stuck form.
   await page.goto('/login');
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
-  await page.getByLabel('Email').fill('demo@example.com');
+  await page.getByLabel('Email', { exact: true }).fill('demo@example.com');
   await capture(page, '26-sign-in-screen.png');
-  await page.getByLabel('Email').fill('not-registered-' + unique + '@example.com');
+  await page.getByLabel('Email', { exact: true }).fill('not-registered-' + unique + '@example.com');
   await page.locator('input[autocomplete="current-password"]').fill('Incorrect-Password-2026');
   const badLoginPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/auth/login' && response.request().method() === 'POST');
@@ -64,9 +64,9 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.goto('/register');
   await expect(page.getByRole('heading', { name: 'Create your company' })).toBeVisible();
   await capture(page, '27-create-workspace-form.png');
-  await page.getByLabel('Company name').fill('Northstar Mechanical Services ' + unique);
-  await page.getByLabel('Your name').fill('Morgan Ellis');
-  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Company name', { exact: true }).fill('Northstar Mechanical Services ' + unique);
+  await page.getByLabel('Your name', { exact: true }).fill('Morgan Ellis');
+  await page.getByLabel('Email', { exact: true }).fill(email);
   await page.locator('input[autocomplete="new-password"]').fill('Northstar-Test-Pass!2026');
   const registerPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/auth/register' && response.request().method() === 'POST');
@@ -83,9 +83,9 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.goto('/customers');
   await expect(page.getByRole('heading', { name: 'Customers' })).toBeVisible();
   await page.getByRole('button', { name: 'Add customer', exact: true }).click();
-  await page.getByLabel('Name').fill(customerName);
-  await page.getByLabel('Email').fill('customer-' + unique + '@example.com');
-  await page.getByLabel('Notes').fill('Synthetic record created by automated end-to-end testing.');
+  await page.getByLabel('Name', { exact: true }).fill(customerName);
+  await page.getByLabel('Email', { exact: true }).fill('customer-' + unique + '@example.com');
+  await page.getByLabel('Notes', { exact: true }).fill('Synthetic record created by automated end-to-end testing.');
   const customerPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/customers' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create customer', exact: true }).click();
@@ -99,10 +99,10 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.getByRole('button', { name: /Contacts/ }).click();
   await page.getByRole('button', { name: 'Add contact', exact: true }).click();
   const contactName = 'E2E Billing Contact ' + unique;
-  await page.getByRole('dialog').last().getByLabel('Full name').fill(contactName);
-  await page.getByRole('dialog').last().getByLabel('Email').fill('billing-' + unique + '@example.com');
-  await page.getByRole('dialog').last().getByLabel('Phone').fill('5550101');
-  await page.getByRole('dialog').last().getByLabel('Billing contact').check();
+  await page.getByRole('dialog').last().getByLabel('Full name', { exact: true }).fill(contactName);
+  await page.getByRole('dialog').last().getByLabel('Email', { exact: true }).fill('billing-' + unique + '@example.com');
+  await page.getByRole('dialog').last().getByLabel('Phone', { exact: true }).fill('5550101');
+  await page.getByRole('dialog').last().getByLabel('Billing contact', { exact: true }).check();
   const contactPromise = page.waitForResponse(response => response.url() === API + '/api/v1/customers/' + customer.id + '/contacts' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Add contact', exact: true }).last().click();
   const contactResponse = await contactPromise;
@@ -112,12 +112,12 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
 
   await page.getByRole('button', { name: /Locations/ }).click();
   await page.getByRole('button', { name: 'Add location', exact: true }).click();
-  await page.getByLabel('Location name').fill(locationName);
-  await page.getByLabel('Address line 1').fill('123 E2E Test Avenue');
-  await page.getByLabel('City').fill('Tampa');
-  await page.getByLabel('Region/state').fill('FL');
-  await page.getByLabel('Postal code').fill('33602');
-  await page.getByLabel('Country code').fill('US');
+  await page.getByLabel('Location name', { exact: true }).fill(locationName);
+  await page.getByLabel('Address line 1', { exact: true }).fill('123 E2E Test Avenue');
+  await page.getByLabel('City', { exact: true }).fill('Tampa');
+  await page.getByLabel('Region/state', { exact: true }).fill('FL');
+  await page.getByLabel('Postal code', { exact: true }).fill('33602');
+  await page.getByLabel('Country code', { exact: true }).fill('US');
   const locationPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/customers/' + customer.id + '/service-locations' &&
     response.request().method() === 'POST');
@@ -134,13 +134,13 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.goto('/agreements');
   await expect(page.getByRole('heading', { name: 'Agreements' })).toBeVisible();
   await page.getByRole('button', { name: 'New agreement', exact: true }).click();
-  await chooseOption(page, page.getByLabel('Customer'), customer.id);
-  await expect(page.getByLabel('Service location')).toHaveAttribute('data-value', location.id);
-  await chooseOption(page, page.getByLabel('Service location'), location.id);
-  await page.getByLabel('Agreement title').fill(agreementTitle);
-  await page.getByLabel('Service name').fill('Preventive HVAC maintenance');
-  await page.getByLabel('Unit price').fill('120.00');
-  await page.getByLabel('Terms').fill('Synthetic end-to-end test agreement; no real service is scheduled.');
+  await chooseOption(page, page.getByLabel('Customer', { exact: true }), customer.id);
+  await expect(page.getByLabel('Service location', { exact: true })).toHaveAttribute('data-value', location.id);
+  await chooseOption(page, page.getByLabel('Service location', { exact: true }), location.id);
+  await page.getByLabel('Agreement title', { exact: true }).fill(agreementTitle);
+  await page.getByLabel('Service name', { exact: true }).fill('Preventive HVAC maintenance');
+  await page.getByLabel('Unit price', { exact: true }).fill('120.00');
+  await page.getByLabel('Terms', { exact: true }).fill('Synthetic end-to-end test agreement; no real service is scheduled.');
   const agreementPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/agreements' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create draft agreement', exact: true }).click();
@@ -161,7 +161,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   expect((await proposedResponse.json()).status).toBe('proposed');
 
   await page.getByRole('button', { name: 'Record manual acceptance', exact: true }).click();
-  await page.getByLabel('Accepted by').fill('Morgan Ellis');
+  await page.getByLabel('Accepted by', { exact: true }).fill('Morgan Ellis');
   const acceptPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/agreements/' + agreement.id + '/accept' &&
     response.request().method() === 'POST');
@@ -169,14 +169,14 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   const acceptedResponse = await acceptPromise;
   expect(acceptedResponse.status()).toBe(200);
   expect((await acceptedResponse.json()).status).toBe('active');
-  await expect(page.getByLabel('Accepted by')).toHaveCount(0);
+  await expect(page.getByLabel('Accepted by', { exact: true })).toHaveCount(0);
 
   // Agreements effective today activate when accepted; verify subsequent suspend/resume transitions.
   const suspendPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/agreements/' + agreement.id + '/suspend' &&
     response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Suspend', exact: true }).click();
-  await page.getByLabel('Reason').fill('Suspend and resume lifecycle verification');
+  await page.getByLabel('Reason', { exact: true }).fill('Suspend and resume lifecycle verification');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   const suspendedResponse = await suspendPromise;
   expect(suspendedResponse.status()).toBe(200);
@@ -199,11 +199,11 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.goto('/invoices');
   await expect(page.getByRole('heading', { name: 'Invoices' })).toBeVisible();
   await page.getByRole('button', { name: 'New invoice', exact: true }).click();
-  await chooseOption(page, page.getByLabel('Customer'), customer.id);
-  await chooseOption(page, page.getByLabel('Service location'), location.id);
-  await page.getByLabel('Service code').fill('E2E-HVAC');
-  await page.getByLabel('Description').fill('Preventive HVAC maintenance');
-  await page.getByLabel('Unit price').fill('120.00');
+  await chooseOption(page, page.getByLabel('Customer', { exact: true }), customer.id);
+  await chooseOption(page, page.getByLabel('Service location', { exact: true }), location.id);
+  await page.getByLabel('Service code', { exact: true }).fill('E2E-HVAC');
+  await page.getByLabel('Description', { exact: true }).fill('Preventive HVAC maintenance');
+  await page.getByLabel('Unit price', { exact: true }).fill('120.00');
   const invoicePromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/invoices' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create draft invoice', exact: true }).click();
@@ -224,7 +224,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   expect((await issuedResponse.json()).status).toBe('issued');
 
   await page.getByRole('button', { name: 'Record payment', exact: true }).click();
-  await page.getByLabel('Amount').fill('120.00');
+  await page.getByLabel('Amount', { exact: true }).fill('120.00');
   const paymentPromise = page.waitForResponse(response =>
     response.url() === API + '/api/v1/invoices/' + invoice.id + '/payments' &&
     response.request().method() === 'POST');
@@ -244,12 +244,12 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.goto('/assets');
   await expect(page.getByRole('heading', { name: 'Equipment' })).toBeVisible();
   await page.getByRole('button', { name: 'Add equipment', exact: true }).click();
-  await chooseOption(page, page.getByLabel('Customer'), customer.id);
-  await chooseOption(page, page.getByLabel('Service location'), location.id);
-  await page.getByLabel('Category').fill('HVAC system');
-  await page.getByLabel('Manufacturer').fill('E2E Systems');
-  await page.getByLabel('Model number').fill('QA-120');
-  await page.getByLabel('Serial number').fill('SERIAL-' + unique);
+  await chooseOption(page, page.getByLabel('Customer', { exact: true }), customer.id);
+  await chooseOption(page, page.getByLabel('Service location', { exact: true }), location.id);
+  await page.getByLabel('Category', { exact: true }).fill('HVAC system');
+  await page.getByLabel('Manufacturer', { exact: true }).fill('E2E Systems');
+  await page.getByLabel('Model number', { exact: true }).fill('QA-120');
+  await page.getByLabel('Serial number', { exact: true }).fill('SERIAL-' + unique);
   const equipmentPromise = page.waitForResponse(response => response.url() === API + '/api/v1/equipment' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create equipment', exact: true }).click();
   const equipmentResponse = await equipmentPromise;
@@ -264,12 +264,12 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.goto('/catalog');
   await expect(page.getByRole('heading', { name: 'Service catalog' })).toBeVisible();
   await page.getByRole('button', { name: 'Add service', exact: true }).click();
-  await page.getByLabel('Service code').fill('e2e-' + unique);
-  await page.getByLabel('Category').fill('Maintenance');
-  await page.getByLabel('Name').fill('QA HVAC inspection');
-  await page.getByLabel('Description').fill('Synthetic catalog item from end-to-end testing.');
-  await page.getByLabel('Unit price').fill('150.00');
-  await page.getByLabel('Duration, minutes').fill('60');
+  await page.getByLabel('Service code', { exact: true }).fill('e2e-' + unique);
+  await page.getByLabel('Category', { exact: true }).fill('Maintenance');
+  await page.getByLabel('Name', { exact: true }).fill('QA HVAC inspection');
+  await page.getByLabel('Description', { exact: true }).fill('Synthetic catalog item from end-to-end testing.');
+  await page.getByLabel('Unit price', { exact: true }).fill('150.00');
+  await page.getByLabel('Duration, minutes', { exact: true }).fill('60');
   const catalogPromise = page.waitForResponse(response => response.url() === API + '/api/v1/service-catalog' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create service', exact: true }).click();
   const catalogResponse = await catalogPromise;
@@ -286,10 +286,10 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.getByRole('button', { name: 'Team', exact: true }).click();
   await page.getByRole('button', { name: 'Add team member', exact: true }).click();
   const technicianEmail = 'sam-tech-' + unique + '@example.com';
-  await page.getByLabel('Full name').fill('E2E Technician');
-  await page.getByLabel('Email').fill(technicianEmail);
+  await page.getByLabel('Full name', { exact: true }).fill('E2E Technician');
+  await page.getByLabel('Email', { exact: true }).fill(technicianEmail);
   await page.getByRole('dialog').last().locator('input[type="password"]').fill('Northstar-Team-Member!2026');
-  await chooseOption(page, page.getByLabel('Role'), 'technician');
+  await chooseOption(page, page.getByLabel('Role', { exact: true }), 'technician');
   const technicianPromise = page.waitForResponse(response => response.url() === API + '/api/v1/users' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create member', exact: true }).click();
   const technicianResponse = await technicianPromise;
@@ -301,15 +301,15 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.goto('/operations');
   await expect(page.getByRole('heading', { name: 'Operations' })).toBeVisible();
   await page.getByRole('button', { name: 'New work order', exact: true }).click();
-  await chooseOption(page, page.getByLabel('Customer'), customer.id);
-  await chooseOption(page, page.getByLabel('Service location'), location.id);
-  await chooseOption(page, page.getByLabel('Equipment'), equipment.id);
-  await chooseOption(page, page.getByRole('dialog').last().getByLabel('Agreement'), agreement.id);
+  await chooseOption(page, page.getByLabel('Customer', { exact: true }), customer.id);
+  await chooseOption(page, page.getByLabel('Service location', { exact: true }), location.id);
+  await chooseOption(page, page.getByLabel('Equipment', { exact: true }), equipment.id);
+  await chooseOption(page, page.getByRole('dialog').last().getByLabel('Agreement', { exact: true }), agreement.id);
   const workOrderTitle = 'E2E HVAC service visit ' + unique;
-  await page.getByLabel('Title').fill(workOrderTitle);
-  await page.getByLabel('Scheduled date').fill(new Date().toISOString().slice(0, 10));
-  await chooseOption(page, page.getByLabel('Priority'), 'high');
-  await page.getByLabel('Description').fill('Synthetic job; no field visit will be performed.');
+  await page.getByLabel('Title', { exact: true }).fill(workOrderTitle);
+  await page.getByLabel('Scheduled date', { exact: true }).fill(new Date().toISOString().slice(0, 10));
+  await chooseOption(page, page.getByLabel('Priority', { exact: true }), 'high');
+  await page.getByLabel('Description', { exact: true }).fill('Synthetic job; no field visit will be performed.');
   const workOrderPromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create work order', exact: true }).click();
   const workOrderResponse = await workOrderPromise;
@@ -322,7 +322,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   const workOrderRow = page.getByRole('row').filter({ hasText: workOrderTitle });
   const assignPromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders/' + workOrder.id + '/assign' && response.request().method() === 'POST');
   await workOrderRow.getByRole('button', { name: 'Assign', exact: true }).click();
-  await chooseOption(page, page.getByLabel('Technician'), technician.id);
+  await chooseOption(page, page.getByLabel('Technician', { exact: true }), technician.id);
   await page.getByRole('button', { name: 'Assign technician', exact: true }).click();
   const assignedResponse = await assignPromise;
   expect(assignedResponse.status()).toBe(200);
@@ -333,9 +333,9 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   expect(startedResponse.status()).toBe(200);
   expect((await startedResponse.json()).status).toBe('in_progress');
   await workOrderRow.getByRole('button', { name: 'Complete', exact: true }).click();
-  await page.getByLabel('Completion notes').fill('End-to-end completion verified.');
-  await page.getByLabel('Technician findings').fill('Synthetic test record.');
-  await page.getByLabel('Customer sign-off').fill('E2E Test Customer');
+  await page.getByLabel('Completion notes', { exact: true }).fill('End-to-end completion verified.');
+  await page.getByLabel('Technician findings', { exact: true }).fill('Synthetic test record.');
+  await page.getByLabel('Customer sign-off', { exact: true }).fill('E2E Test Customer');
   const completePromise = page.waitForResponse(response => response.url() === API + '/api/v1/work-orders/' + workOrder.id + '/complete' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Complete work order', exact: true }).click();
   const completeResponse = await completePromise;
@@ -350,17 +350,17 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.goto('/settings');
   await page.getByRole('button', { name: 'Recurring billing', exact: true }).click();
   await page.getByRole('button', { name: 'Add recurring schedule', exact: true }).click();
-  await chooseOption(page, page.getByLabel('Customer'), customer.id);
-  await chooseOption(page, page.getByLabel('Service location'), location.id);
-  await chooseOption(page, page.getByRole('dialog').last().getByLabel('Agreement'), agreement.id);
+  await chooseOption(page, page.getByLabel('Customer', { exact: true }), customer.id);
+  await chooseOption(page, page.getByLabel('Service location', { exact: true }), location.id);
+  await chooseOption(page, page.getByRole('dialog').last().getByLabel('Agreement', { exact: true }), agreement.id);
   const scheduleName = 'E2E HVAC Monthly ' + unique;
-  await page.getByLabel('Name').fill(scheduleName);
-  await chooseOption(page, page.getByLabel('Frequency'), 'monthly');
-  await page.getByLabel('Next invoice').fill(new Date().toISOString().slice(0, 10));
-  await page.getByLabel('Due days').fill('30');
-  await page.getByLabel('Service code').fill('E2E-RECURRING');
-  await page.getByLabel('Description').fill('Synthetic monthly HVAC service');
-  await page.getByLabel('Unit price').fill('50.00');
+  await page.getByLabel('Name', { exact: true }).fill(scheduleName);
+  await chooseOption(page, page.getByLabel('Frequency', { exact: true }), 'monthly');
+  await page.getByLabel('Next invoice', { exact: true }).fill(new Date().toISOString().slice(0, 10));
+  await page.getByLabel('Due days', { exact: true }).fill('30');
+  await page.getByLabel('Service code', { exact: true }).fill('E2E-RECURRING');
+  await page.getByLabel('Description', { exact: true }).fill('Synthetic monthly HVAC service');
+  await page.getByLabel('Unit price', { exact: true }).fill('50.00');
   const recurringPromise = page.waitForResponse(response => response.url() === API + '/api/v1/recurring-invoices' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create schedule', exact: true }).click();
   const recurringResponse = await recurringPromise;
@@ -442,11 +442,11 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await importRow.getByRole('button', { name: 'Review', exact: true }).click();
   await page.getByRole('button', { name: 'Correct', exact: true }).click();
   const recoveredName = 'Recovered CSV Customer ' + unique;
-  await page.getByRole('dialog').last().getByLabel('Customer name').fill(recoveredName);
-  await chooseOption(page, page.getByRole('dialog').last().getByLabel('Customer type'), 'commercial');
-  await page.getByRole('dialog').last().getByLabel('Email').fill('recovered-' + unique + '@example.com');
-  await page.getByRole('dialog').last().getByLabel('Phone').fill('5550104');
-  await page.getByRole('dialog').last().getByLabel('Notes').fill('Corrected during E2E import recovery.');
+  await page.getByRole('dialog').last().getByLabel('Customer name', { exact: true }).fill(recoveredName);
+  await chooseOption(page, page.getByRole('dialog').last().getByLabel('Customer type', { exact: true }), 'commercial');
+  await page.getByRole('dialog').last().getByLabel('Email', { exact: true }).fill('recovered-' + unique + '@example.com');
+  await page.getByRole('dialog').last().getByLabel('Phone', { exact: true }).fill('5550104');
+  await page.getByRole('dialog').last().getByLabel('Notes', { exact: true }).fill('Corrected during E2E import recovery.');
   const correctedRowPromise = page.waitForResponse(response =>
     response.url().includes('/api/v1/customers/imports/' + importJob.id + '/rows/') &&
     response.request().method() === 'PUT');
@@ -479,10 +479,10 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.getByRole('button', { name: 'Queue email', exact: true }).click();
   const queuedEmail = 'sam-notify-' + unique + '@example.com';
   const emailSubject = 'Northstar Service Update ' + unique;
-  await page.getByRole('dialog').last().getByLabel('Recipient').fill(queuedEmail);
-  await page.getByRole('dialog').last().getByLabel('Subject').fill(emailSubject);
-  await page.getByRole('dialog').last().getByLabel('Event type').fill('manual.notification');
-  await page.getByRole('dialog').last().getByLabel('Body').fill('Follow-up notification for the service agreement.');
+  await page.getByRole('dialog').last().getByLabel('Recipient', { exact: true }).fill(queuedEmail);
+  await page.getByRole('dialog').last().getByLabel('Subject', { exact: true }).fill(emailSubject);
+  await page.getByRole('dialog').last().getByLabel('Event type', { exact: true }).fill('manual.notification');
+  await page.getByRole('dialog').last().getByLabel('Body', { exact: true }).fill('Follow-up notification for the service agreement.');
   const notificationPromise = page.waitForResponse(response => response.url() === API + '/api/v1/notifications' && response.request().method() === 'POST');
   await page.getByRole('dialog').last().getByRole('button', { name: 'Queue email', exact: true }).click();
   const notificationResponse = await notificationPromise;
@@ -497,9 +497,9 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   // SMS is intentionally not delivered when the provider is disabled; the UI must expose the backend error.
   await page.getByRole('button', { name: 'SMS', exact: true }).click();
   await page.getByRole('button', { name: 'Queue SMS', exact: true }).click();
-  await page.getByRole('dialog').last().getByLabel('Phone').fill('+15550101010');
-  await page.getByRole('dialog').last().getByLabel('Event type').fill('manual.notification');
-  await page.getByRole('dialog').last().getByLabel('Message').fill('Synthetic SMS provider configuration check.');
+  await page.getByRole('dialog').last().getByLabel('Phone', { exact: true }).fill('+15550101010');
+  await page.getByRole('dialog').last().getByLabel('Event type', { exact: true }).fill('manual.notification');
+  await page.getByRole('dialog').last().getByLabel('Message', { exact: true }).fill('Synthetic SMS provider configuration check.');
   const smsPromise = page.waitForResponse(response => response.url() === API + '/api/v1/sms' && response.request().method() === 'POST');
   await page.getByRole('dialog').last().getByRole('button', { name: 'Queue SMS', exact: true }).click();
   const smsResponse = await smsPromise;
@@ -512,13 +512,13 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.goto('/operations');
   await page.getByRole('button', { name: 'Maintenance', exact: true }).click();
   await page.getByRole('button', { name: 'New maintenance plan', exact: true }).click();
-  await chooseOption(page, page.getByRole('dialog').last().getByLabel('Customer'), customer.id);
-  await chooseOption(page, page.getByRole('dialog').last().getByLabel('Service location'), location.id);
+  await chooseOption(page, page.getByRole('dialog').last().getByLabel('Customer', { exact: true }), customer.id);
+  await chooseOption(page, page.getByRole('dialog').last().getByLabel('Service location', { exact: true }), location.id);
   const maintenanceName = 'E2E Quarterly HVAC Plan ' + unique;
-  await chooseOption(page, page.getByRole('dialog').last().getByLabel('Frequency'), 'quarterly');
-  await page.getByRole('dialog').last().getByLabel('Plan name').fill(maintenanceName);
-  await page.getByRole('dialog').last().getByLabel('Next due date').fill(new Date().toISOString().slice(0, 10));
-  await page.getByRole('dialog').last().getByLabel('Checklist, one item per line').fill('Inspect HVAC filter\nVerify thermostat');
+  await chooseOption(page, page.getByRole('dialog').last().getByLabel('Frequency', { exact: true }), 'quarterly');
+  await page.getByRole('dialog').last().getByLabel('Plan name', { exact: true }).fill(maintenanceName);
+  await page.getByRole('dialog').last().getByLabel('Next due date', { exact: true }).fill(new Date().toISOString().slice(0, 10));
+  await page.getByRole('dialog').last().getByLabel('Checklist, one item per line', { exact: true }).fill('Inspect HVAC filter\nVerify thermostat');
   const maintenancePromise = page.waitForResponse(response => response.url() === API + '/api/v1/maintenance/schedules' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create maintenance plan', exact: true }).click();
   const maintenanceResponse = await maintenancePromise;
@@ -546,12 +546,12 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await page.getByRole('button', { name: 'Add branch', exact: true }).click();
   const branchName = 'E2E Tampa Branch ' + unique;
   const branchCode = 'QA' + unique;
-  await page.getByRole('dialog').last().getByLabel('Name').fill(branchName);
+  await page.getByRole('dialog').last().getByLabel('Name', { exact: true }).fill(branchName);
   await page.getByRole('dialog').last().getByLabel('Code', { exact: true }).fill(branchCode);
-  await page.getByRole('dialog').last().getByLabel('Timezone').fill('America/New_York');
-  await page.getByRole('dialog').last().getByLabel('Country code').fill('US');
-  await page.getByRole('dialog').last().getByLabel('City').fill('Tampa');
-  await page.getByRole('dialog').last().getByLabel('Email').fill('branch-' + unique + '@example.com');
+  await page.getByRole('dialog').last().getByLabel('Timezone', { exact: true }).fill('America/New_York');
+  await page.getByRole('dialog').last().getByLabel('Country code', { exact: true }).fill('US');
+  await page.getByRole('dialog').last().getByLabel('City', { exact: true }).fill('Tampa');
+  await page.getByRole('dialog').last().getByLabel('Email', { exact: true }).fill('branch-' + unique + '@example.com');
   const branchCreatePromise = page.waitForResponse(response => response.url() === API + '/api/v1/branches' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create branch', exact: true }).click();
   const branchCreateResponse = await branchCreatePromise;
@@ -563,7 +563,7 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await branchRow.getByRole('button', { name: 'Open', exact: true }).click();
   const mondayHours = page.locator('.hours-row').filter({ hasText: 'Monday' });
   await expect(mondayHours).toBeVisible();
-  await mondayHours.getByLabel('Closed').uncheck();
+  await mondayHours.getByLabel('Closed', { exact: true }).uncheck();
   await mondayHours.locator('input[type=time]').nth(0).fill('08:00');
   await mondayHours.locator('input[type=time]').nth(1).fill('17:00');
   const hoursPromise = page.waitForResponse(response => response.url() === API + '/api/v1/branches/' + newBranch.id + '/business-hours' && response.request().method() === 'PUT');
@@ -577,9 +577,9 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   expect(savedMonday.opens_at).toContain('08:00');
   expect(savedMonday.closes_at).toContain('17:00');
   const closureName = 'E2E maintenance closure ' + unique;
-  await page.getByRole('dialog').last().getByLabel('Date').fill(new Date().toISOString().slice(0, 10));
-  await page.getByRole('dialog').last().getByLabel('Name').fill(closureName);
-  await page.getByRole('dialog').last().getByLabel('Description').fill('Synthetic closure record for integration testing.');
+  await page.getByRole('dialog').last().getByLabel('Date', { exact: true }).fill(new Date().toISOString().slice(0, 10));
+  await page.getByRole('dialog').last().getByLabel('Name', { exact: true }).fill(closureName);
+  await page.getByRole('dialog').last().getByLabel('Description', { exact: true }).fill('Synthetic closure record for integration testing.');
   const closurePromise = page.waitForResponse(response => response.url() === API + '/api/v1/branches/' + newBranch.id + '/closures' && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Add closure', exact: true }).click();
   const closureResponse = await closurePromise;
