@@ -166,6 +166,7 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
             id={`${menuId}-option-${index}`}
             type="button"
             role="option"
+            data-value={optionValue(option)}
             aria-selected={isSelected}
             disabled={disabled || !!option.props.disabled}
             className={`select-option${activeIndex === index ? " is-active" : ""}${isSelected ? " is-selected" : ""}`}
