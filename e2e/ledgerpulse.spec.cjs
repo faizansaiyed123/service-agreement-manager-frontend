@@ -300,6 +300,26 @@ test('Service Agreement Manager customer-to-cash journey persists customer, agre
   await expect(page.getByText(('e2e-' + unique).toUpperCase())).toBeVisible();
   await capture(page, '10-service-catalog-created.png');
 
+  // Create an active branch first; technician invitations require at least one eligible branch.
+  await page.goto('/operations');
+  await expect(page.getByRole('heading', { name: 'Operations' })).toBeVisible();
+  await page.getByRole('button', { name: 'Branches', exact: true }).click();
+  await page.getByRole('button', { name: 'Add branch', exact: true }).click();
+  const branchDialog = page.getByRole('dialog').last();
+  const branchName = 'E2E Branch ' + unique;
+  const branchCode = 'E2E-' + unique.slice(-8);
+  await branchDialog.getByLabel('Name', { exact: true }).fill(branchName);
+  await branchDialog.getByLabel('Code', { exact: true }).fill(branchCode);
+  await branchDialog.getByLabel('Timezone', { exact: true }).fill('America/Chicago');
+  await branchDialog.getByLabel('Country code', { exact: true }).fill('US');
+  await branchDialog.getByLabel('City', { exact: true }).fill('Austin');
+  const branchPromise = page.waitForResponse(response =>
+    response.url() === API + '/api/v1/branches' && response.request().method() === 'POST');
+  await branchDialog.getByRole('button', { name: 'Create branch', exact: true }).click();
+  const branchResponse = await branchPromise;
+  expect(branchResponse.status()).toBe(201);
+  expect((await branchResponse.json()).is_active).toBe(true);
+
   // Invite a technician through the new one-time activation flow.
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
