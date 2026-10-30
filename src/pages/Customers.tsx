@@ -157,6 +157,7 @@ export function CustomersPage() {
       </Card>
       {modal && (
         <CustomerModal
+          customers={customers}
           onClose={() => setModal(false)}
           onCreated={(customer) => {
             setCustomers((current) => [customer, ...current]);
@@ -194,6 +195,7 @@ export function CustomersPage() {
       )}
       {selected && (
         <CustomerDrawer
+          customers={customers}
           customer={selected}
           canManagePortal={canManagePortal}
           onClose={() => setSelected(null)}
@@ -210,9 +212,11 @@ export function CustomersPage() {
 }
 
 function CustomerModal({
+  customers,
   onClose,
   onCreated,
 }: {
+  customers: Customer[];
   onClose: () => void;
   onCreated: (customer: Customer) => void;
 }) {
@@ -230,6 +234,17 @@ function CustomerModal({
     event.preventDefault();
     setBusy(true);
     setError("");
+
+    const duplicate = customers.find(
+      (c) => c.name.toLowerCase().trim() === form.name.toLowerCase().trim(),
+    );
+    if (duplicate) {
+      setBusy(false);
+      setError(
+        `A customer named "${form.name}" already exists. Customer names must be unique.`,
+      );
+      return;
+    }
 
     try {
       const customer = await endpoints.customers.create({
@@ -304,11 +319,13 @@ function CustomerModal({
 }
 
 function CustomerDrawer({
+  customers,
   customer,
   canManagePortal,
   onClose,
   onChanged,
 }: {
+  customers: Customer[];
   customer: Customer;
   canManagePortal: boolean;
   onClose: () => void;
@@ -590,6 +607,7 @@ function CustomerDrawer({
       )}
       {editOpen && (
         <CustomerEditModal
+          customers={customers}
           customer={customer}
           onClose={() => setEditOpen(false)}
           onUpdated={(updated) => {
@@ -603,10 +621,12 @@ function CustomerDrawer({
 }
 
 function CustomerEditModal({
+  customers,
   customer,
   onClose,
   onUpdated,
 }: {
+  customers: Customer[];
   customer: Customer;
   onClose: () => void;
   onUpdated: (customer: Customer) => void;
@@ -625,6 +645,19 @@ function CustomerEditModal({
     event.preventDefault();
     setBusy(true);
     setError("");
+
+    const duplicate = customers.find(
+      (c) =>
+        c.id !== customer.id &&
+        c.name.toLowerCase().trim() === form.name.toLowerCase().trim(),
+    );
+    if (duplicate) {
+      setBusy(false);
+      setError(
+        `A customer named "${form.name}" already exists. Customer names must be unique.`,
+      );
+      return;
+    }
 
     try {
       onUpdated(
