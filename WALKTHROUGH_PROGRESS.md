@@ -7,8 +7,8 @@
 **Screenshot directory:** [`docs/testing/visuals/`](docs/testing/visuals/)
 
 ## Completed and verified
-- Main-branch browser workflow passed: [Run #40929740539](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/40929740539).
-- Source revision exercised by the workflow: [908c32cfa666fef719a3d8de7ae791e6ec8ad656](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/908c32cfa666fef719a3d8de7ae791e6ec8ad656).
+- Main-branch browser workflow passed: [Run #41103916072](https://github.com/faizansaiyed123/service-agreement-manager-frontend/actions/runs/41103916072).
+- Source revision exercised by the workflow: [3869da4d80eb23139112503b419d34292b4aa016](https://github.com/faizansaiyed123/service-agreement-manager-frontend/commit/3869da4d80eb23139112503b419d34292b4aa016).
 - Browser journey result: 4 passed, 0 failed, 0 skipped.
 - Production frontend build and local production preview started successfully as part of the walkthrough.
 - Backend migrations, schema consistency, Ruff, full pytest and PostgreSQL concurrency checks passed in the same run.
