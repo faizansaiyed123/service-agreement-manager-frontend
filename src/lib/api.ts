@@ -1,3 +1,4 @@
+import { demoRequest, demoBlob } from "./demo/runtime";
 import type {
   Agreement,
   AgreementPortal,
@@ -101,6 +102,7 @@ export async function api<T>(
   options: RequestInit = {},
   retry = true,
 ): Promise<T> {
+  return demoRequest<T>(path, options);
   const requestPath = normalizedPath(path);
   const headers = new Headers(options.headers);
 
@@ -133,6 +135,7 @@ export async function api<T>(
 }
 
 export async function apiBlob(path: string, retry = true): Promise<Blob> {
+  return demoBlob(path);
   const requestPath = normalizedPath(path);
   const response = await fetch(API_URL + PREFIX + requestPath, {
     credentials: "include",
@@ -151,6 +154,7 @@ async function publicApi<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
+  return demoRequest<T>(path, options);
   const requestPath = normalizedPath(path);
   const headers = new Headers(options.headers);
 
@@ -177,6 +181,7 @@ async function publicApi<T>(
 
 
 async function publicSessionApi<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return demoRequest<T>(path, options);
   const requestPath = normalizedPath(path);
   const headers = new Headers(options.headers);
   if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
@@ -213,6 +218,7 @@ async function customerApi<T>(
   options: RequestInit = {},
   retry = true,
 ): Promise<T> {
+  return demoRequest<T>(path, options);
   const requestPath = normalizedPath(path);
   const headers = new Headers(options.headers);
   if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
@@ -234,6 +240,7 @@ async function customerApi<T>(
 }
 
 async function customerApiBlob(path: string, retry = true): Promise<Blob> {
+  return demoBlob(path);
   const requestPath = normalizedPath(path);
   const response = await fetch(API_URL + PREFIX + requestPath, {
     credentials: "include",
