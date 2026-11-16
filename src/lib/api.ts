@@ -33,6 +33,8 @@ import type {
   CustomerPortalDocument,
 } from "../types";
 
+const DEMO_MODE = true;
+
 const API_URL = (
   import.meta.env.VITE_API_URL ||
   (import.meta.env.DEV ? "http://localhost:8000" : "")
@@ -102,7 +104,7 @@ export async function api<T>(
   options: RequestInit = {},
   retry = true,
 ): Promise<T> {
-  return demoRequest<T>(path, options);
+  if (DEMO_MODE) return demoRequest<T>(path, options);
   const requestPath = normalizedPath(path);
   const headers = new Headers(options.headers);
 
@@ -135,7 +137,7 @@ export async function api<T>(
 }
 
 export async function apiBlob(path: string, retry = true): Promise<Blob> {
-  return demoBlob(path);
+  if (DEMO_MODE) return demoBlob(path);
   const requestPath = normalizedPath(path);
   const response = await fetch(API_URL + PREFIX + requestPath, {
     credentials: "include",
@@ -154,7 +156,7 @@ async function publicApi<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  return demoRequest<T>(path, options);
+  if (DEMO_MODE) return demoRequest<T>(path, options);
   const requestPath = normalizedPath(path);
   const headers = new Headers(options.headers);
 
@@ -181,7 +183,7 @@ async function publicApi<T>(
 
 
 async function publicSessionApi<T>(path: string, options: RequestInit = {}): Promise<T> {
-  return demoRequest<T>(path, options);
+  if (DEMO_MODE) return demoRequest<T>(path, options);
   const requestPath = normalizedPath(path);
   const headers = new Headers(options.headers);
   if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
@@ -218,7 +220,7 @@ async function customerApi<T>(
   options: RequestInit = {},
   retry = true,
 ): Promise<T> {
-  return demoRequest<T>(path, options);
+  if (DEMO_MODE) return demoRequest<T>(path, options);
   const requestPath = normalizedPath(path);
   const headers = new Headers(options.headers);
   if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
@@ -240,7 +242,7 @@ async function customerApi<T>(
 }
 
 async function customerApiBlob(path: string, retry = true): Promise<Blob> {
-  return demoBlob(path);
+  if (DEMO_MODE) return demoBlob(path);
   const requestPath = normalizedPath(path);
   const response = await fetch(API_URL + PREFIX + requestPath, {
     credentials: "include",
