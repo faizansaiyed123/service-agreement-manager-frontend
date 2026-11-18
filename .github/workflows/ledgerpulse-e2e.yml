@@ -393,7 +393,7 @@ jobs:
 
           publish_branch="automation/visual-evidence-${SOURCE_SHA:0:12}"
           git switch -c "$publish_branch"
-          git commit -m "docs(testing): publish visual evidence for ${SOURCE_SHA:0:7} [skip ci]"
+          git commit -m "docs(testing): publish visual evidence for ${SOURCE_SHA:0:7}"
           git push origin "HEAD:${publish_branch}"
 
           pr_url="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$publish_branch" --base main --state open --json url --jq '.[0].url')"
