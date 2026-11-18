@@ -177,7 +177,7 @@ jobs:
           retention-days: 14
 
   publish-visuals:
-    if: ${{ needs.browser-api-e2e.result == 'success' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
+    if: ${{ needs.browser-api-e2e.result == 'success' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'docs(testing): publish visual evidence'))) }}
     needs: [browser-api-e2e]
     runs-on: ubuntu-latest
     permissions:
@@ -396,13 +396,14 @@ jobs:
           git commit -m "docs(testing): publish visual evidence for ${SOURCE_SHA:0:7}"
           git push origin "HEAD:${publish_branch}"
 
-          pr_url="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$publish_branch" --base main --state open --json url --jq '.[0].url')"
-          if [ -z "$pr_url" ]; then
-            pr_url="$(gh pr create \
-              --repo "$GITHUB_REPOSITORY" \
-              --base main \
-              --head "$publish_branch" \
-              --title "docs(testing): publish visual evidence for ${SOURCE_SHA:0:7}" \
-              --body "Automated visual evidence publication for successful walkthrough run ${SOURCE_RUN_ID} on commit ${SOURCE_SHA}. All screenshots and generated testing records come from that successful run.")"
-          fi
-          echo "Visual evidence pull request: $pr_url"
+          publish_url="https://github.com/${GITHUB_REPOSITORY}/tree/${publish_branch}"
+          pr_url="https://github.com/${GITHUB_REPOSITORY}/compare/main...${publish_branch}?expand=1"
+          {
+            echo "### Visual evidence staged for publication"
+            echo
+            echo "The successful walkthrough evidence is available on [${publish_branch}](${publish_url})."
+            echo
+            echo "This repository currently prevents GitHub Actions from creating pull requests, so create/merge the PR from [this comparison link](${pr_url})."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Visual evidence branch: $publish_url"
+          echo "Create the protected-main PR here: $pr_url"
