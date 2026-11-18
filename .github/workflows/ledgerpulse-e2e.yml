@@ -177,7 +177,7 @@ jobs:
           retention-days: 14
 
   publish-visuals:
-    if: ${{ needs.browser-api-e2e.result == 'success' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'docs(testing): publish visual evidence'))) }}
+    if: ${{ needs.browser-api-e2e.result == 'success' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.event.head_commit.message, 'docs(testing)'))) }}
     needs: [browser-api-e2e]
     runs-on: ubuntu-latest
     permissions:
