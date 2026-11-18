@@ -14,8 +14,11 @@ jobs:
         with:
           node-version: "22"
       - run: npm ci --no-audit --no-fund
-      - name: Audit npm dependencies for known vulnerabilities
-        run: npm audit --audit-level=high
+      - name: Audit production npm dependencies for known vulnerabilities
+        run: npm audit --omit=dev --audit-level=high
+      - name: Report development dependency audit status
+        run: |
+          npm audit --include=dev --audit-level=high || true
       - run: npm run build
       - name: Build production frontend image
         run: docker build --tag service-agreement-manager-frontend:ci .

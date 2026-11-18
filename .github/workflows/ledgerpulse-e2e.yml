@@ -183,6 +183,7 @@ jobs:
     permissions:
       actions: read
       contents: write
+      pull-requests: write
     steps:
       - name: Check out the tested main revision
         uses: actions/checkout@v4
@@ -387,7 +388,21 @@ jobs:
           git add docs/testing visual.md WALKTHROUGH_PROGRESS.md
           if git diff --cached --quiet; then
             echo "Curated visual evidence is already current; no commit needed."
-          else
-            git commit -m "docs(testing): publish visual evidence for ${SOURCE_SHA:0:7} [skip ci]"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
+            exit 0
           fi
+
+          publish_branch="automation/visual-evidence-${SOURCE_SHA:0:12}"
+          git switch -c "$publish_branch"
+          git commit -m "docs(testing): publish visual evidence for ${SOURCE_SHA:0:7}"
+          git push origin "HEAD:${publish_branch}"
+
+          pr_url="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$publish_branch" --base main --state open --json url --jq '.[0].url')"
+          if [ -z "$pr_url" ]; then
+            pr_url="$(gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --base main \
+              --head "$publish_branch" \
+              --title "docs(testing): publish visual evidence for ${SOURCE_SHA:0:7}" \
+              --body "Automated visual evidence publication for successful walkthrough run ${SOURCE_RUN_ID} on commit ${SOURCE_SHA}. All screenshots and generated testing records come from that successful run.")"
+          fi
+          echo "Visual evidence pull request: $pr_url"
