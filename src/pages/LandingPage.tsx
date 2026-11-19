@@ -180,7 +180,6 @@ export function LandingPage() {
           >
             <div className="service-home-journey-heading">
               <span>ONE CONNECTED SERVICE RELATIONSHIP</span>
-              <span>01 — 04</span>
             </div>
             <ol className="service-home-journey-list">
               {serviceStages.map((stage) => (
@@ -191,9 +190,6 @@ export function LandingPage() {
                     <h2>{stage.title}</h2>
                     <p>{stage.description}</p>
                   </div>
-                  <span className="service-home-journey-arrow" aria-hidden="true">
-                    ↗
-                  </span>
                 </li>
               ))}
             </ol>
