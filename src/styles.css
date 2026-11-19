@@ -1154,35 +1154,29 @@ tr:last-child td {
 }
 
 .service-home-brand-mark {
-  width: 37px;
-  height: 37px;
-  display: grid;
-  place-items: center;
-  color: var(--home-paper);
-  background: var(--home-forest-dark);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 13px;
-  letter-spacing: -.06em;
+  width: 40px;
+  height: 40px;
+  display: block;
+  flex: 0 0 auto;
+}
+
+.service-home-brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .service-home-brand-copy {
-  display: grid;
-  gap: 3px;
+  display: block;
 }
 
 .service-home-brand-copy strong {
   color: var(--home-ink);
-  font-size: 12px;
-  line-height: 1.1;
+  font-size: 13px;
+  line-height: 1.15;
   font-weight: 750;
   letter-spacing: -.025em;
-}
-
-.service-home-brand-copy small {
-  color: var(--home-muted);
-  font-size: 8px;
-  font-weight: 750;
-  letter-spacing: .19em;
 }
 
 .service-home-nav,
@@ -1295,8 +1289,7 @@ tr:last-child td {
 
 .service-home-intro h1 em,
 .service-home-section-heading h2 em,
-.service-home-workflow-heading h2 em,
-.service-home-security-heading h2 em {
+.service-home-workflow-heading h2 em {
   color: var(--home-rust);
   font-weight: 400;
   font-style: italic;
@@ -1473,8 +1466,7 @@ tr:last-child td {
 }
 
 .service-home-section-heading h2,
-.service-home-workflow-heading h2,
-.service-home-security-heading h2 {
+.service-home-workflow-heading h2 {
   max-width: 590px;
   margin: 22px 0 16px;
   color: var(--home-ink);
@@ -1487,8 +1479,7 @@ tr:last-child td {
 }
 
 .service-home-section-heading p,
-.service-home-workflow-heading p,
-.service-home-security-heading p {
+.service-home-workflow-heading p {
   max-width: 460px;
   margin: 0;
   color: var(--home-muted);
@@ -1626,48 +1617,6 @@ tr:last-child td {
   line-height: 1.75;
 }
 
-.service-home-security {
-  width: min(1440px, 100%);
-  margin: 0 auto;
-  padding: 94px clamp(22px, 5.2vw, 80px) 100px;
-  display: grid;
-  grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr);
-  align-items: center;
-  gap: clamp(44px, 7vw, 110px);
-  border-bottom: 1px solid var(--home-line);
-}
-
-.service-home-security-heading h2 {
-  max-width: 500px;
-}
-
-.service-home-security-list {
-  margin: 0;
-  border-top: 1px solid var(--home-line);
-}
-
-.service-home-security-list > div {
-  padding: 16px 0;
-  display: grid;
-  grid-template-columns: minmax(145px, .72fr) minmax(0, 1.28fr);
-  gap: 20px;
-  border-bottom: 1px solid var(--home-line);
-}
-
-.service-home-security-list dt {
-  color: var(--home-rust);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: .12em;
-}
-
-.service-home-security-list dd {
-  max-width: 390px;
-  margin: 0;
-  color: #59675f;
-  font-size: 11px;
-  line-height: 1.7;
-}
 
 .service-home-close {
   width: min(1440px, 100%);
@@ -1844,17 +1793,6 @@ tr:last-child td {
     border-left: 0;
   }
 
-  .service-home-security {
-    padding-top: 78px;
-    padding-bottom: 84px;
-    grid-template-columns: 1fr;
-    gap: 34px;
-  }
-
-  .service-home-security-heading {
-    max-width: 680px;
-  }
-
   .service-home-footer {
     grid-template-columns: auto 1fr;
   }
@@ -1876,13 +1814,22 @@ tr:last-child td {
     gap: 13px;
   }
 
+  .service-home-brand {
+    gap: 7px;
+  }
+
   .service-home-brand-mark {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .service-home-brand-copy {
+    max-width: 100px;
   }
 
   .service-home-brand-copy strong {
-    font-size: 11px;
+    font-size: 10px;
+    line-height: 1.15;
   }
 
   .service-home-header-actions {
@@ -2011,15 +1958,13 @@ tr:last-child td {
   }
 
   .service-home-section-heading h2,
-  .service-home-workflow-heading h2,
-  .service-home-security-heading h2 {
+  .service-home-workflow-heading h2 {
     margin-top: 17px;
     font-size: 38px;
   }
 
   .service-home-section-heading p,
-  .service-home-workflow-heading p,
-  .service-home-security-heading p {
+  .service-home-workflow-heading p {
     font-size: 11px;
   }
 
@@ -2074,17 +2019,6 @@ tr:last-child td {
   .service-home-steps p {
     max-width: none;
     font-size: 11px;
-  }
-
-  .service-home-security {
-    padding: 69px 20px 73px;
-    gap: 25px;
-  }
-
-  .service-home-security-list > div {
-    grid-template-columns: 1fr;
-    gap: 7px;
-    padding: 14px 0;
   }
 
   .service-home-close {

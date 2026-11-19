@@ -114,18 +114,16 @@ export function LandingPage() {
             aria-label="Service Agreement Manager home"
           >
             <span className="service-home-brand-mark" aria-hidden="true">
-              SA
+              <img src="/favicon.svg" alt="" />
             </span>
             <span className="service-home-brand-copy">
-              <strong>Service Agreement</strong>
-              <small>MANAGER</small>
+              <strong>Service Agreement Manager</strong>
             </span>
           </Link>
 
           <nav className="service-home-nav" aria-label="Page sections">
             <a href="#platform">What it connects</a>
             <a href="#workflow">How work moves</a>
-            <a href="#security">Security</a>
           </nav>
 
           <div className="service-home-header-actions">
@@ -253,43 +251,6 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="service-home-security" id="security">
-          <div className="service-home-security-heading">
-            <span className="service-home-section-index">ACCESS AND ACCOUNTABILITY</span>
-            <h2>
-              The way in matters <em>as much as the work.</em>
-            </h2>
-            <p>
-              Workspace access is checked by the application, with sessions and
-              role-specific routes handled as part of the existing sign-in flow.
-            </p>
-          </div>
-
-          <dl className="service-home-security-list">
-            <div>
-              <dt>SESSION HANDLING</dt>
-              <dd>
-                Server-set HttpOnly cookies keep session credentials out of
-                browser-readable storage.
-              </dd>
-            </div>
-            <div>
-              <dt>SESSION CONTINUITY</dt>
-              <dd>
-                API requests use the session cookie, with refresh handled through
-                the authentication service.
-              </dd>
-            </div>
-            <div>
-              <dt>WORKSPACE ACCESS</dt>
-              <dd>
-                Protected routes verify the session and apply the access rules
-                associated with each workspace role.
-              </dd>
-            </div>
-          </dl>
-        </section>
-
         <section className="service-home-close">
           <div>
             <span className="service-home-section-index">SERVICE AGREEMENT MANAGER</span>
@@ -313,12 +274,11 @@ export function LandingPage() {
           aria-label="Service Agreement Manager home"
         >
           <span className="service-home-brand-mark" aria-hidden="true">
-            SA
-          </span>
-          <span className="service-home-brand-copy">
-            <strong>Service Agreement</strong>
-            <small>MANAGER</small>
-          </span>
+              <img src="/favicon.svg" alt="" />
+            </span>
+            <span className="service-home-brand-copy">
+              <strong>Service Agreement Manager</strong>
+            </span>
         </Link>
         <p>One connected workspace for the service relationship, from agreement to invoice.</p>
         <nav aria-label="Account links">
